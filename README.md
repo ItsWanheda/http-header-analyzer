@@ -83,6 +83,7 @@ http-header-analyzer/
     └── static/
         ├── style.css
         └── app.js
+```
 ---
 
 ## 🛠️ API Documentation
