@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> HTTP Header Analyzer </title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Matrix Effect -->
+    <canvas id="matrix"></canvas>
+
+    <!-- The Eye -->
+    <div class="eye-container">
+        <div class="eye"></div>
+        <div class="pupil"></div>
+    </div>
+
+    <!-- Preloader -->
+    <div id="preloader" class="preloader hidden">
+        <div class="scanner"></div>
+        <div class="loading-text">ANALYZING TARGET...</div>
+    </div>
+
+    <div class="container">
+        <header class="terminal-window">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="title">root@Wanheda:~/analyzer</span>
+            </div>
+            <h1><span class="glitch" data-text="HTTP_HEADER_ANALYZER">HTTP_HEADER_ANALYZER</span></h1>
+            <p class="subtitle">SECURITY PROTOCOL // <span id="status">STANDBY</span></p>
+        </header>
+
+        <main>
+            <section class="input-terminal terminal-window">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="title">input_target.sh</span>
+                </div>
+                <form id="analyzeForm">
+                    <div class="form-group">
+                        <label for="urlInput">> TARGET_URL:</label>
+                        <input type="text" id="urlInput" placeholder="https://example.com" required autocomplete="off">
+                    </div>
+                    <button type="submit" id="analyzeBtn">
+                        <span class="btn-text">INITIATE_SCAN</span>
+                    </button>
+                </form>
+            </section>
+
+            <section class="results-terminal terminal-window" id="resultsSection" style="display: none;">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="title">analysis_report.log</span>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Score -->
+                    <div class="card">
+                        <h3>SECURITY_SCORE</h3>
+                        <div class="score-display">
+                            <div class="score-circle" id="scoreCircle">
+                                <span class="score-value" id="scoreValue">0</span>
+                                <span class="score-label">/100</span>
+                            </div>
+                            <div class="rating-badge" id="ratingBadge">-</div>
+                        </div>
+                    </div>
+
+                    <!-- TLS -->
+                    <div class="card full-width">
+                        <h3>SSL/TLS_CONFIGURATION</h3>
+                        <div class="grid-container" id="tlsDetails"></div>
+                    </div>
+
+                    <!-- Headers -->
+                    <div class="card full-width">
+                        <h3>SECURITY_HEADERS</h3>
+                        <div class="table-container">
+                            <table id="headersTable">
+                                <thead>
+                                    <tr>
+                                        <th>HEADER_NAME</th>
+                                        <th>VALUE</th>
+                                        <th>STATUS</th>
+                                        <th>DETAILS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="headersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Redirects -->
+                    <div class="card full-width">
+                        <h3>REDIRECT_CHAIN</h3>
+                        <div id="redirectsList"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="terminal-window">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="title">system_info</span>
+            </div>
+            <p>Developed by <a href="https://github.com/Wanheda7737" target="_blank" rel="noopener noreferrer">ItsWanheda</a> | Secure Your Web Presence</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
