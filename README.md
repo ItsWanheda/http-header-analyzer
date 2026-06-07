@@ -199,11 +199,11 @@ GET /api/health
 
 ### Analysis Results
 
-![Analysis Results](assets/results-page.png)
+![Analysis Results](assets/result-page.png)
 
-![Analysis Results](assets/results2-page.png)
+![Analysis Results](assets/result2-page.png)
 
-![Analysis Results](assets/results3-page.png)
+![Analysis Results](assets/result3-page.png)
 
 ---
 
