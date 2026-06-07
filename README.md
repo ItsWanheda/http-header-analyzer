@@ -53,31 +53,36 @@ Developed by **ItsWanheda**.
 ---
 
 ## 📂 Project Structure
+
+```text
 http-header-analyzer/
-├── cmd/
-│ └── server/
-│ └── main.go # Entry point
-├── internal/
-│ ├── analyzer/ # Core analysis logic
-│ │ ├── analyzer.go # Main analyzer struct
-│ │ ├── security.go # Header checks & scoring
-│ │ ├── tls.go # TLS inspection
-│ │ └── redirects.go # Redirect chain logic
-│ ├── api/
-│ │ └── handlers.go # HTTP handlers
-│ ├── models/
-│ │ └── result.go # Data structures
-│ └── validation/
-│ └── url.go # URL validation & SSRF protection
-├── web/
-│ ├── templates/
-│ │ └── index.html # Frontend HTML
-│ └── static/
-│ ├── style.css # Cyberpunk CSS
-│ └── app.js # Frontend logic
-├── go.mod # Go module definition
-├── go.sum # Dependency checksums
-└── README.md # This file
+├── .gitignore              # Ignore build artifacts, OS files, etc.
+├── LICENSE                 # MIT License file
+├── README.md               # Project documentation
+├── go.mod                  # Go module definition
+├── go.sum                  # Dependency checksums
+├── screenshots/            # Images for README
+├── cmd/                    # Application entry points
+│   └── server/
+│       └── main.go         # The main executable
+├── internal/               # Private application code
+│   ├── analyzer/           # Core analysis logic
+│   │   ├── analyzer.go
+│   │   ├── security.go
+│   │   ├── tls.go
+│   │   └── redirects.go
+│   ├── api/                # HTTP handlers
+│   │   └── handlers.go
+│   ├── models/             # Data structures
+│   │   └── result.go
+│   └── validation/         # URL validation logic
+│       └── url.go
+└── web/                    # Frontend assets
+    ├── templates/
+    │   └── index.html
+    └── static/
+        ├── style.css
+        └── app.js
 ---
 
 ## 🛠️ API Documentation
