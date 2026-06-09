@@ -18,7 +18,7 @@ As this project involves security analysis, we hold our community to a higher st
 * **Respectful Collaboration**: Disagreements happen, especially in security. Keep technical debates focused on the code and the logic, not the individual.
 
 ## Enforcement
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project maintainer(s) at [wanheda.work@gmail.com/contact]. All complaints will be reviewed and investigated and will result in a response that is deemed necessary and appropriate to the circumstances.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project maintainer(s) at [wanheda.work@gmail.com]. All complaints will be reviewed and investigated and will result in a response that is deemed necessary and appropriate to the circumstances.
 
 ## Attribution
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1.
