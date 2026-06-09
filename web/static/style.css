@@ -1,4 +1,5 @@
 :root {
+    /* Dark Theme (Default) */
     --bg-color: #050505;
     --terminal-bg: #0a0a0a;
     --primary-green: #00ff41;
@@ -8,6 +9,19 @@
     --dim-text: #555;
     --border-color: #333;
     --font-mono: 'Share Tech Mono', monospace;
+    --shadow-color: rgba(0, 255, 65, 0.1);
+}
+
+[data-theme="light"] {
+    --bg-color: #f0f2f5;
+    --terminal-bg: #ffffff;
+    --primary-green: #008f11;
+    --primary-red: #d32f2f;
+    --primary-yellow: #fbc02d;
+    --text-color: #1a1a1a;
+    --dim-text: #757575;
+    --border-color: #e0e0e0;
+    --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -23,6 +37,7 @@ body {
     overflow-x: hidden;
     min-height: 100vh;
     position: relative;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 /* Matrix Background */
@@ -33,7 +48,12 @@ body {
     width: 100%;
     height: 100%;
     z-index: -1;
-    opacity: 0.15;
+    opacity: 0.1;
+    transition: opacity 0.3s;
+}
+
+[data-theme="light"] #matrix {
+    opacity: 0.05;
 }
 
 /* The Eye */
@@ -85,7 +105,7 @@ body {
     transform: translate(-50%, -50%);
 }
 
-/* Preloader */
+/* Preloader (Skeleton Style) */
 .preloader {
     position: fixed;
     top: 0;
@@ -133,6 +153,39 @@ body {
     50% { opacity: 0.3; }
 }
 
+/* Toast Notifications */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 3000;
+}
+
+.toast {
+    background: var(--terminal-bg);
+    border: 1px solid var(--primary-green);
+    color: var(--primary-green);
+    padding: 1rem 1.5rem;
+    margin-top: 10px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease-out;
+    max-width: 300px;
+}
+
+.toast.error {
+    border-color: var(--primary-red);
+    color: var(--primary-red);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
 /* Container */
 .container {
     max-width: 1200px;
@@ -146,13 +199,13 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 4px;
     margin-bottom: 1.5rem;
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.05);
+    box-shadow: 0 0 15px var(--shadow-color);
     transition: all 0.3s ease;
 }
 
 .terminal-window:hover {
     border-color: var(--primary-green);
-    box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+    box-shadow: 0 0 20px var(--shadow-color);
 }
 
 .terminal-header {
@@ -161,7 +214,11 @@ body {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+}
+
+[data-theme="light"] .terminal-header {
+    background: #f5f5f5;
 }
 
 .dot {
@@ -178,6 +235,18 @@ body {
     margin-left: 1rem;
     font-size: 0.8rem;
     color: var(--dim-text);
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    cursor: pointer;
+    color: var(--primary-green);
+    font-size: 1.2rem;
+    transition: transform 0.3s;
+}
+
+.theme-toggle:hover {
+    transform: rotate(15deg);
 }
 
 /* Header */
@@ -229,6 +298,11 @@ header h1 {
     transition: all 0.3s;
 }
 
+[data-theme="light"] .form-group input {
+    background: #fff;
+    color: #000;
+}
+
 .form-group input:focus {
     outline: none;
     border-color: var(--primary-green);
@@ -257,6 +331,23 @@ button:hover {
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Copy Button */
+.copy-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--dim-text);
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+}
+
+.copy-btn:hover {
+    border-color: var(--primary-green);
+    color: var(--primary-green);
 }
 
 /* Results Section */
@@ -342,6 +433,10 @@ button:disabled {
     border: 1px solid var(--border-color);
 }
 
+[data-theme="light"] .tls-detail {
+    background: #f9f9f9;
+}
+
 .tls-detail dt {
     color: var(--dim-text);
     font-size: 0.8rem;
@@ -372,6 +467,11 @@ th {
     border-bottom: 2px solid var(--border-color);
 }
 
+[data-theme="light"] th {
+    background: #f5f5f5;
+    color: var(--primary-green);
+}
+
 td {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -387,6 +487,11 @@ td code {
     padding: 0.25rem 0.5rem;
     color: var(--primary-green);
     font-family: var(--font-mono);
+}
+
+[data-theme="light"] td code {
+    background: #e0e0e0;
+    color: #000;
 }
 
 /* Status Colors */
@@ -433,6 +538,10 @@ td code {
     margin-bottom: 0.5rem;
     border-left: 3px solid var(--primary-green);
     transition: all 0.3s;
+}
+
+[data-theme="light"] .redirect-step {
+    background: #f9f9f9;
 }
 
 .redirect-step:hover {
@@ -522,5 +631,15 @@ footer a:hover {
     
     .terminal-window {
         padding: 1rem;
+    }
+    
+    .eye-container {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .pupil {
+        width: 20px;
+        height: 20px;
     }
 }

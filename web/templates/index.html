@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> HTTP Header Analyzer </title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title> Header Analyzer </title>
+    <link rel="stylesheet" href="../static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- Background Matrix Effect -->
@@ -17,7 +19,10 @@
         <div class="pupil"></div>
     </div>
 
-    <!-- Preloader -->
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Preloader (Skeleton Style) -->
     <div id="preloader" class="preloader hidden">
         <div class="scanner"></div>
         <div class="loading-text">ANALYZING TARGET...</div>
@@ -29,10 +34,13 @@
                 <span class="dot red"></span>
                 <span class="dot yellow"></span>
                 <span class="dot green"></span>
-                <span class="title">root@Wanheda:~/analyzer</span>
+                <span class="title">root@ItsWanheda:~/analyzer</span>
+                <div class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-sun"></i>
+                </div>
             </div>
             <h1><span class="glitch" data-text="HTTP_HEADER_ANALYZER">HTTP_HEADER_ANALYZER</span></h1>
-            <p class="subtitle">SECURITY PROTOCOL // <span id="status">STANDBY</span></p>
+            <p class="subtitle">SECURITY PROTOCOL v1.2 // <span id="status">STANDBY</span></p>
         </header>
 
         <main>
@@ -60,6 +68,9 @@
                     <span class="dot yellow"></span>
                     <span class="dot green"></span>
                     <span class="title">analysis_report.log</span>
+                    <button class="copy-btn" id="copyBtn" title="Copy JSON">
+                        <i class="fas fa-copy"></i>
+                    </button>
                 </div>
                 
                 <div class="dashboard-grid">
@@ -115,10 +126,10 @@
                 <span class="dot green"></span>
                 <span class="title">system_info</span>
             </div>
-            <p>Developed by <a href="https://github.com/Wanheda7737" target="_blank" rel="noopener noreferrer">ItsWanheda</a> | Secure Your Web Presence</p>
+            <p>POWERED BY <a href="https://github.com/ItsWanheda" target="_blank" rel="noopener noreferrer">ItsWanheda</a> // SECURE YOUR INFRASTRUCTURE</p>
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="../static/app.js"></script>
 </body>
 </html>

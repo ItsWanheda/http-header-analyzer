@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize Form
     initForm();
+    
+    // Initialize Theme Toggle
+    initThemeToggle();
+    
+    // Initialize Copy Button
+    initCopyButton();
 });
 
 function initMatrix() {
@@ -78,6 +84,44 @@ function initEyeTracking() {
     });
 }
 
+function initThemeToggle() {
+    const toggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    const icon = toggle.querySelector('i');
+
+    // Check local storage for theme preference
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+    updateIcon(savedTheme);
+
+    toggle.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateIcon(newTheme);
+    });
+
+    function updateIcon(theme) {
+        if (theme === 'dark') {
+            icon.className = 'fas fa-sun';
+        } else {
+            icon.className = 'fas fa-moon';
+        }
+    }
+}
+
+function initCopyButton() {
+    const copyBtn = document.getElementById('copyBtn');
+    
+    copyBtn.addEventListener('click', () => {
+        // This is a placeholder. In a real app, you'd store the last result
+        // and copy it here. For now, we'll just show a toast.
+        showToast('JSON export coming soon!', 'info');
+    });
+}
+
 function initForm() {
     const form = document.getElementById('analyzeForm');
     const urlInput = document.getElementById('urlInput');
@@ -113,7 +157,7 @@ function initForm() {
 
             if (!response.ok) {
                 const error = await response.json();
-                alert(`ERROR: ${error.error}`);
+                showToast(`Error: ${error.error}`, 'error');
                 return;
             }
 
@@ -126,8 +170,9 @@ function initForm() {
             
             statusElement.textContent = 'SCAN COMPLETE';
             statusElement.style.color = 'var(--primary-green)';
+            showToast('Analysis complete!', 'success');
         } catch (error) {
-            alert(`ERROR: ${error.message}`);
+            showToast(`Error: ${error.message}`, 'error');
             statusElement.textContent = 'SCAN FAILED';
             statusElement.style.color = 'var(--primary-red)';
         } finally {
@@ -274,4 +319,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Toast Notification Function
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let icon = 'fa-info-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    if (type === 'success') icon = 'fa-check-circle';
+    
+    toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    // Remove toast after 3 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
 }
