@@ -12,42 +12,24 @@ Developed by **ItsWanheda**.
 
 ## ✨ Features
 
-* Security Header Analysis
+### 🛡️ Security & Analysis Core
+* **Security Header Analysis**: Deep inspection of CSP, HSTS, X-Frame, X-Content-Type, Referrer, and Permissions policies.
+* **TLS/SSL Inspection**: Detects TLS versions, cipher suites, certificate metadata, and expiration status.
+* **Redirect Chain Tracking**: Full path visualization from initial request to final destination.
+* **Security Scoring**: Automated 0–100 scoring system with letter grades (A+ to F).
+* **Built-in SSRF Protection**: Hardened against blind/non-blind SSRF by blocking localhost, private IP ranges, and internal network targets.
 
-  * Content-Security-Policy (CSP)
-  * Strict-Transport-Security (HSTS)
-  * X-Frame-Options
-  * X-Content-Type-Options
-  * Referrer-Policy
-  * Permissions-Policy
+### 🎨 User Experience (UX)
+* **Cyberpunk/Hacker Aesthetic**: Dark-themed, high-contrast UI designed for security enthusiasts.
+* **Dark/Light Mode**: Smooth theme toggling for comfort during late-night analysis.
+* **Responsive Design**: Fluid layout optimized for desktops, tablets, and mobile devices.
+* **Interactive Feedback**: 
+    * **One-Click Clipboard**: Instant JSON response copying.
+    * **Pulsing Skeleton Loaders**: Smooth, professional loading states.
+    * **Toast Notifications**: Non-intrusive status updates for alerts and operations.
 
-* TLS/SSL Inspection
-
-  * TLS version detection
-  * Cipher suite information
-  * Certificate issuer and subject
-  * Expiration checks
-
-* Redirect Chain Tracking
-
-  * HTTP → HTTPS redirect analysis
-  * Full redirect path visualization
-
-* Security Scoring
-
-  * Score from 0–100
-  * Letter grades (A+ to F)
-
-* Built-in SSRF Protection
-
-  * Blocks localhost
-  * Blocks private IP ranges
-  * Blocks internal network targets
-
-* REST API
-
-  * JSON-based analysis endpoint
-  * Health-check endpoint
+### ⚙️ Integration
+* **REST API**: JSON-based analysis endpoints and system health-check utilities.
 
 ---
 
