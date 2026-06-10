@@ -13,6 +13,9 @@ Developed by **ItsWanheda**.
 ## ✨ Features
 
 ### 🛡️ Security & Analysis Core
+
+**Cookie Security Analysis**: Automated audit of Secure, HttpOnly, and SameSite flags.
+**Remediation Engine**: Provides specific, actionable recommendations for every missing or weak security configuration.
 * **Security Header Analysis**: Deep inspection of CSP, HSTS, X-Frame, X-Content-Type, Referrer, and Permissions policies.
 * **TLS/SSL Inspection**: Detects TLS versions, cipher suites, certificate metadata, and expiration status.
 * **Redirect Chain Tracking**: Full path visualization from initial request to final destination.
@@ -31,6 +34,11 @@ Developed by **ItsWanheda**.
 ### ⚙️ Integration
 * **REST API**: JSON-based analysis endpoints and system health-check utilities.
 
+### Roadmap (Upcoming Features)
+[ ] Historical Tracking: Compare scan results over time to detect security regressions.
+[ ] Batch Scanner: Analyze multiple subdomains or lists of URLs.
+[ ] CSP Visualizer: Graphical breakdown of CSP directives and attack surface.
+[ ] Export Options: Download comprehensive reports in JSON, CSV, or PDF formats.
 ---
 
 ## 🚀 Quick Start
@@ -80,24 +88,28 @@ http-header-analyzer/
 │   │   ├── analyzer.go
 │   │   ├── security.go
 │   │   ├── tls.go
+│   │   ├── rules.goo  # Added
 │   │   └── redirects.go
+│   │    
 │   │
 │   ├── api/
 │   │   └── handlers.go
 │   │
 │   ├── models/
+│   │   ├── security.go # Added
 │   │   └── result.go
+│   │
 │   │
 │   └── validation/
 │       └── url.go
 │
 ├── web/
 │   ├── templates/
-│   │   └── index.html
+│   │   └── index.html #updated
 │   │
 │   └── static/
-│       ├── style.css
-│       └── app.js
+│       ├── style.css #updated
+│       └── app.js    #updated
 │
 ├── go.mod
 ├── go.sum
@@ -129,27 +141,17 @@ POST /api/analyze
 ```json
 {
   "url": "https://example.com",
-  "timestamp": "2026-06-07T19:47:16Z",
-  "security_headers": [
-    {
-      "name": "Strict-Transport-Security",
-      "value": "max-age=31536000; includeSubDomains",
-      "present": true,
-      "status": "pass",
-      "message": ""
-    }
-  ],
-  "tls": {
-    "version": "TLS 1.3",
-    "cipher_suite": "TLS_AES_256_GCM_SHA384",
-    "valid": true,
-    "subject": "*.example.com",
-    "issuer": "Let's Encrypt",
-    "expires_at": "2027-01-01T00:00:00Z"
-  },
-  "redirects": [],
   "score": 95,
-  "rating": "A"
+  "rating": "A",
+  "issues": [
+    {
+      "header": "Strict-Transport-Security",
+      "status": "pass",
+      "severity": "High",
+      "explanation": "HSTS prevents SSL stripping...",
+      "remediation": "Add 'Strict-Transport-Security' header with 'max-age=63072000; includeSubDomains'."
+    }
+  ]
 }
 ```
 
