@@ -34,11 +34,14 @@ Developed by **ItsWanheda**.
 ### ⚙️ Integration
 * **REST API**: JSON-based analysis endpoints and system health-check utilities.
 
-### Roadmap (Upcoming Features)
-**Historical Tracking**: Compare scan results over time to detect security regressions.
-**Batch Scanner**: Analyze multiple subdomains or lists of URLs.
-**CSP Visualizer**: Graphical breakdown of CSP directives and attack surface.
-**Export Options**: Download comprehensive reports in JSON, CSV, or PDF formats.
+---
+
+## 🗺️ Roadmap (Upcoming Features)
+* [ ] **Historical Tracking**: Compare scan results over time to detect security regressions.
+* [ ] **Batch Scanner**: Analyze multiple subdomains or lists of URLs.
+* [ ] **CSP Visualizer**: Graphical breakdown of CSP directives and attack surface.
+* [ ] **Export Options**: Download comprehensive reports in JSON, CSV, or PDF formats.
+
 ---
 
 ## 🚀 Quick Start
