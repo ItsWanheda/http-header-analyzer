@@ -54,7 +54,7 @@ Developed by **ItsWanheda**.
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/itswanheda7737/http-header-analyzer.git
+git clone https://github.com/itswanheda/http-header-analyzer.git
 cd http-header-analyzer
 ```
 
