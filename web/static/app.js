@@ -24,50 +24,50 @@ let lastResult = null;
    ========================================================= */
 
 function $(id) {
-    return document.getElementById(id);
+  return document.getElementById(id);
 }
 
 
 function escapeHtml(value) {
-    if (value === null || value === undefined) {
-        return "";
-    }
+  if (value === null || value === undefined) {
+    return "";
+  }
 
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 
 function showElement(element) {
-    if (!element) return;
+  if (!element) return;
 
-    element.style.display = "";
-    element.hidden = false;
+  element.style.display = "";
+  element.hidden = false;
 }
 
 
 function hideElement(element) {
-    if (!element) return;
+  if (!element) return;
 
-    element.hidden = true;
+  element.hidden = true;
 }
 
 
 function setText(id, value) {
-    const element = $(id);
+  const element = $(id);
 
-    if (!element) return;
+  if (!element) return;
 
-    element.textContent =
-        value === null ||
-        value === undefined ||
-        value === ""
-            ? "—"
-            : String(value);
+  element.textContent =
+    value === null ||
+      value === undefined ||
+      value === ""
+      ? "—"
+      : String(value);
 }
 
 
@@ -76,31 +76,31 @@ function setText(id, value) {
    ========================================================= */
 
 function showToast(message, type = "info") {
-    let toast = $("toast");
+  let toast = $("toast");
 
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "toast";
-        toast.className = "toast";
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
 
-        document.body.appendChild(toast);
-    }
+    document.body.appendChild(toast);
+  }
 
-    toast.textContent = message;
+  toast.textContent = message;
 
-    toast.className =
-        `toast toast-${type}`;
+  toast.className =
+    `toast toast-${type}`;
 
-    toast.classList.add("show");
+  toast.classList.add("show");
 
-    clearTimeout(
-        window.__toastTimer
-    );
+  clearTimeout(
+    window.__toastTimer
+  );
 
-    window.__toastTimer =
-        setTimeout(() => {
-            toast.classList.remove("show");
-        }, 3000);
+  window.__toastTimer =
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 3000);
 }
 
 
@@ -109,39 +109,39 @@ function showToast(message, type = "info") {
    ========================================================= */
 
 async function analyzeTarget(target) {
-    const response =
-        await fetch("/api/analyze", {
-            method: "POST",
+  const response =
+    await fetch("/api/analyze", {
+      method: "POST",
 
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
 
-            body: JSON.stringify({
-                url: target
-            })
-        });
+      body: JSON.stringify({
+        url: target
+      })
+    });
 
-    let data;
+  let data;
 
-    try {
-        data = await response.json();
-    } catch (error) {
-        throw new Error(
-            "Server returned invalid JSON."
-        );
-    }
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "Server returned invalid JSON."
+    );
+  }
 
-    if (!response.ok) {
-        throw new Error(
-            data?.error ||
-            data?.message ||
-            `Request failed (${response.status})`
-        );
-    }
+  if (!response.ok) {
+    throw new Error(
+      data?.error ||
+      data?.message ||
+      `Request failed (${response.status})`
+    );
+  }
 
-    return data;
+  return data;
 }
 
 
@@ -150,97 +150,97 @@ async function analyzeTarget(target) {
    ========================================================= */
 
 async function runScan() {
-    const input =
-        $("urlInput") ||
-        $("url") ||
-        $("targetUrl");
+  const input =
+    $("urlInput") ||
+    $("url") ||
+    $("targetUrl");
 
-    if (!input) {
-        showToast(
-            "URL input not found.",
-            "error"
-        );
+  if (!input) {
+    showToast(
+      "URL input not found.",
+      "error"
+    );
 
-        return;
-    }
+    return;
+  }
 
-    let target =
-        input.value.trim();
+  let target =
+    input.value.trim();
 
-    if (!target) {
-        showToast(
-            "Enter a URL first.",
-            "error"
-        );
+  if (!target) {
+    showToast(
+      "Enter a URL first.",
+      "error"
+    );
 
-        input.focus();
+    input.focus();
 
-        return;
-    }
+    return;
+  }
 
-    if (
-        !target.startsWith("http://") &&
-        !target.startsWith("https://")
-    ) {
-        target =
-            "https://" + target;
-    }
+  if (
+    !target.startsWith("http://") &&
+    !target.startsWith("https://")
+  ) {
+    target =
+      "https://" + target;
+  }
 
-    const scanButton =
-        $("scanBtn") ||
-        $("analyzeBtn") ||
-        $("scanButton");
+  const scanButton =
+    $("scanBtn") ||
+    $("analyzeBtn") ||
+    $("scanButton");
 
-    const originalText =
-        scanButton
-            ? scanButton.innerHTML
-            : "";
+  const originalText =
+    scanButton
+      ? scanButton.innerHTML
+      : "";
 
-    try {
-        if (scanButton) {
-            scanButton.disabled = true;
+  try {
+    if (scanButton) {
+      scanButton.disabled = true;
 
-            scanButton.innerHTML =
-                `
+      scanButton.innerHTML =
+        `
                 <i class="fas fa-spinner fa-spin"></i>
                 SCANNING...
                 `;
-        }
-
-        showToast(
-            "Scanning target...",
-            "info"
-        );
-
-        const result =
-            await analyzeTarget(target);
-
-        lastResult = result;
-
-        displayResults(result);
-
-        showToast(
-            "Scan completed successfully.",
-            "success"
-        );
-
-    } catch (error) {
-        console.error(error);
-
-        showToast(
-            error.message ||
-            "Scan failed.",
-            "error"
-        );
-
-    } finally {
-        if (scanButton) {
-            scanButton.disabled = false;
-
-            scanButton.innerHTML =
-                originalText;
-        }
     }
+
+    showToast(
+      "Scanning target...",
+      "info"
+    );
+
+    const result =
+      await analyzeTarget(target);
+
+    lastResult = result;
+
+    displayResults(result);
+
+    showToast(
+      "Scan completed successfully.",
+      "success"
+    );
+
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      error.message ||
+      "Scan failed.",
+      "error"
+    );
+
+  } finally {
+    if (scanButton) {
+      scanButton.disabled = false;
+
+      scanButton.innerHTML =
+        originalText;
+    }
+  }
 }
 
 
@@ -249,54 +249,76 @@ async function runScan() {
    ========================================================= */
 
 function displayResults(result) {
-    if (!result) {
-        return;
-    }
+  if (!result) {
+    return;
+  }
 
-    lastResult = result;
+  lastResult = result;
 
-    showResultsSection();
+  showResultsSection();
 
-    displayScore(result);
+  displayScore(result);
 
-    displaySecurityHeaders(
-        result.security_headers ||
-        []
-    );
+  displaySecurityHeaders(
+    result.security_headers ||
+    []
+  );
 
-    displayTLS(
-        result.tls ||
-        {}
-    );
+  displayTLS(
+    result.tls ||
+    {}
+  );
 
-    displayCertificate(
-        result.certificate ||
-        null
-    );
+  displayCertificate(
+    result.certificate ||
+    null
+  );
 
-    displayRobots(
-        result.robots ||
-        null
-    );
+  displayRobots(
+    result.robots ||
+    null
+  );
 
-    displayRedirects(
-        result.redirects ||
-        []
-    );
+  displayRedirects(
+    result.redirects ||
+    []
+  );
 
-    displayIssues(
-        result.issues ||
-        []
-    );
+  displayIssues(
+    result.issues ||
+    []
+  );
 
-    displayCSP(
-        result.security_headers ||
-        []
-    );
+  displayCSP(
+    result.security_headers ||
+    []
+  );
 
-    updateJSONPreview(
-        result
-    );
+  updateJSONPreview(
+    result
+  );
+
+  displayHSTS(result.hsts);
+
+  displaySecurityTxt(
+    result.security_txt
+  );
+
+  displayTechnologies(
+    result.technologies
+  );
+
+  displayInformationDisclosure(
+    result.information_disclosure
+  );
+
+  displayHTTPMethods(
+    result.http_methods
+  );
+
+  displayCORS(
+    result.cors
+  );
 }
 
 
@@ -305,21 +327,21 @@ function displayResults(result) {
    ========================================================= */
 
 function showResultsSection() {
-    const candidates = [
-        $("results"),
-        $("resultsSection"),
-        $("report"),
-        $("dashboard"),
-        $("analysisResults")
-    ];
+  const candidates = [
+    $("results"),
+    $("resultsSection"),
+    $("report"),
+    $("dashboard"),
+    $("analysisResults")
+  ];
 
-    candidates.forEach(
-        element => {
-            if (element) {
-                showElement(element);
-            }
-        }
-    );
+  candidates.forEach(
+    element => {
+      if (element) {
+        showElement(element);
+      }
+    }
+  );
 }
 
 
@@ -328,135 +350,135 @@ function showResultsSection() {
    ========================================================= */
 
 function getRating(score) {
-    score = Number(score);
+  score = Number(score);
 
-    if (score >= 97) return "A+";
-    if (score >= 93) return "A";
-    if (score >= 90) return "A-";
-    if (score >= 87) return "B+";
-    if (score >= 83) return "B";
-    if (score >= 80) return "B-";
-    if (score >= 77) return "C+";
-    if (score >= 73) return "C";
-    if (score >= 70) return "C-";
-    if (score >= 60) return "D";
+  if (score >= 97) return "A+";
+  if (score >= 93) return "A";
+  if (score >= 90) return "A-";
+  if (score >= 87) return "B+";
+  if (score >= 83) return "B";
+  if (score >= 80) return "B-";
+  if (score >= 77) return "C+";
+  if (score >= 73) return "C";
+  if (score >= 70) return "C-";
+  if (score >= 60) return "D";
 
-    return "F";
+  return "F";
 }
 
 
 function getGradeClass(grade) {
-    if (!grade) {
-        return "grade-f";
-    }
+  if (!grade) {
+    return "grade-f";
+  }
 
-    return (
-        "grade-" +
-        grade
-            .toLowerCase()
-            .replace("+", "plus")
-            .replace("-", "minus")
-    );
+  return (
+    "grade-" +
+    grade
+      .toLowerCase()
+      .replace("+", "plus")
+      .replace("-", "minus")
+  );
 }
 
 
 function displayScore(result) {
-    const score =
-        Number(result.score || 0);
+  const score =
+    Number(result.score || 0);
 
-    const rating =
-        result.rating ||
-        getRating(score);
+  const rating =
+    result.rating ||
+    getRating(score);
 
-    setText(
-        "scoreValue",
-        score
-    );
+  setText(
+    "scoreValue",
+    score
+  );
 
-    setText(
-        "ratingValue",
-        rating
-    );
+  setText(
+    "ratingValue",
+    rating
+  );
 
-    setText(
-        "securityScore",
-        score
-    );
+  setText(
+    "securityScore",
+    score
+  );
 
-    setText(
-        "securityRating",
-        rating
-    );
+  setText(
+    "securityRating",
+    rating
+  );
 
-    setText(
-        "gradeValue",
-        rating
-    );
+  setText(
+    "gradeValue",
+    rating
+  );
 
-    const scoreElements = [
-        $("scoreValue"),
-        $("securityScore"),
-        $("score")
-    ];
+  const scoreElements = [
+    $("scoreValue"),
+    $("securityScore"),
+    $("score")
+  ];
 
-    scoreElements.forEach(
-        element => {
-            if (!element) return;
+  scoreElements.forEach(
+    element => {
+      if (!element) return;
 
-            element.textContent =
-                score;
-        }
-    );
-
-    const ratingElements = [
-        $("ratingValue"),
-        $("securityRating"),
-        $("gradeValue"),
-        $("rating")
-    ];
-
-    ratingElements.forEach(
-        element => {
-            if (!element) return;
-
-            element.textContent =
-                rating;
-
-            element.classList.remove(
-                "grade-a-plus",
-                "grade-a",
-                "grade-a-minus",
-                "grade-b-plus",
-                "grade-b",
-                "grade-b-minus",
-                "grade-c-plus",
-                "grade-c",
-                "grade-c-minus",
-                "grade-d",
-                "grade-f"
-            );
-
-            element.classList.add(
-                getGradeClass(rating)
-            );
-        }
-    );
-
-    const progress =
-        $("scoreProgress") ||
-        $("scoreBar");
-
-    if (progress) {
-        if (
-            progress.tagName === "PROGRESS"
-        ) {
-            progress.max = 100;
-            progress.value = score;
-        } else {
-            progress.style.width =
-                `${score}%`;
-        }
+      element.textContent =
+        score;
     }
+  );
+
+  const ratingElements = [
+    $("ratingValue"),
+    $("securityRating"),
+    $("gradeValue"),
+    $("rating")
+  ];
+
+  ratingElements.forEach(
+    element => {
+      if (!element) return;
+
+      element.textContent =
+        rating;
+
+      element.classList.remove(
+        "grade-a-plus",
+        "grade-a",
+        "grade-a-minus",
+        "grade-b-plus",
+        "grade-b",
+        "grade-b-minus",
+        "grade-c-plus",
+        "grade-c",
+        "grade-c-minus",
+        "grade-d",
+        "grade-f"
+      );
+
+      element.classList.add(
+        getGradeClass(rating)
+      );
+    }
+  );
+
+  const progress =
+    $("scoreProgress") ||
+    $("scoreBar");
+
+  if (progress) {
+    if (
+      progress.tagName === "PROGRESS"
+    ) {
+      progress.max = 100;
+      progress.value = score;
+    } else {
+      progress.style.width =
+        `${score}%`;
+    }
+  }
 }
 
 
@@ -465,89 +487,88 @@ function displayScore(result) {
    ========================================================= */
 
 function displaySecurityHeaders(headers) {
-    const container =
-        $("securityHeaders") ||
-        $("headersList") ||
-        $("securityHeaderList");
+  const container =
+    $("securityHeaders") ||
+    $("headersList") ||
+    $("securityHeaderList");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    if (!headers.length) {
-        container.innerHTML = `
+  if (!headers.length) {
+    container.innerHTML = `
             <div class="empty-state">
                 No security headers analyzed.
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML =
-        headers.map(header => {
+  container.innerHTML =
+    headers.map(header => {
 
-            const status =
-                String(
-                    header.status ||
-                    "unknown"
-                ).toLowerCase();
+      const status =
+        String(
+          header.status ||
+          "unknown"
+        ).toLowerCase();
 
-            const statusClass =
-                status === "pass"
-                    ? "status-pass"
-                    : status === "warn"
-                        ? "status-warn"
-                        : "status-fail";
+      const statusClass =
+        status === "pass"
+          ? "status-pass"
+          : status === "warn"
+            ? "status-warn"
+            : "status-fail";
 
-            const icon =
-                status === "pass"
-                    ? "fa-check"
-                    : status === "warn"
-                        ? "fa-triangle-exclamation"
-                        : "fa-xmark";
+      const icon =
+        status === "pass"
+          ? "fa-check"
+          : status === "warn"
+            ? "fa-triangle-exclamation"
+            : "fa-xmark";
 
-            return `
+      return `
                 <div class="security-header-item ${statusClass}">
 
                     <div class="security-header-main">
 
                         <div class="security-header-name">
                             ${escapeHtml(
-                                header.name
-                            )}
+        header.name
+      )}
                         </div>
 
                         <div class="security-header-status">
                             <i class="fas ${icon}"></i>
                             ${escapeHtml(
-                                status.toUpperCase()
-                            )}
+        status.toUpperCase()
+      )}
                         </div>
 
                     </div>
 
                     <div class="security-header-value">
                         ${escapeHtml(
-                            header.value || "Not present"
-                        )}
+        header.value || "Not present"
+      )}
                     </div>
 
-                    ${
-                        header.message
-                            ? `
+                    ${header.message
+          ? `
                                 <div class="security-header-message">
                                     ${escapeHtml(
-                                        header.message
-                                    )}
+            header.message
+          )}
                                 </div>
                               `
-                            : ""
-                    }
+          : ""
+        }
 
                 </div>
             `;
-        }).join("");
+    }).join("");
 }
 
 
@@ -556,59 +577,59 @@ function displaySecurityHeaders(headers) {
    ========================================================= */
 
 function displayTLS(tls) {
-    if (!tls) {
-        return;
-    }
+  if (!tls) {
+    return;
+  }
 
-    setText(
-        "tlsVersion",
-        tls.version
+  setText(
+    "tlsVersion",
+    tls.version
+  );
+
+  setText(
+    "cipherSuite",
+    tls.cipher_suite
+  );
+
+  setText(
+    "tlsCertificate",
+    tls.certificate
+  );
+
+  setText(
+    "tlsSubject",
+    tls.subject
+  );
+
+  setText(
+    "tlsIssuer",
+    tls.issuer
+  );
+
+  setText(
+    "tlsExpires",
+    tls.expires_at
+  );
+
+  const valid =
+    $("tlsValid");
+
+  if (valid) {
+    valid.textContent =
+      tls.valid
+        ? "VALID"
+        : "INVALID";
+
+    valid.classList.toggle(
+      "status-pass",
+      Boolean(tls.valid)
     );
 
-    setText(
-        "cipherSuite",
-        tls.cipher_suite
+    valid.classList.toggle(
+      "status-fail",
+      !tls.valid
     );
-
-    setText(
-        "tlsCertificate",
-        tls.certificate
-    );
-
-    setText(
-        "tlsSubject",
-        tls.subject
-    );
-
-    setText(
-        "tlsIssuer",
-        tls.issuer
-    );
-
-    setText(
-        "tlsExpires",
-        tls.expires_at
-    );
-
-    const valid =
-        $("tlsValid");
-
-    if (valid) {
-        valid.textContent =
-            tls.valid
-                ? "VALID"
-                : "INVALID";
-
-        valid.classList.toggle(
-            "status-pass",
-            Boolean(tls.valid)
-        );
-
-        valid.classList.toggle(
-            "status-fail",
-            !tls.valid
-        );
-    }
+  }
 }
 
 
@@ -617,18 +638,18 @@ function displayTLS(tls) {
    ========================================================= */
 
 function displayCertificate(cert) {
-    const container =
-        $("certificateDetails");
+  const container =
+    $("certificateDetails");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    if (
-        !cert ||
-        !cert.present
-    ) {
-        container.innerHTML = `
+  if (
+    !cert ||
+    !cert.present
+  ) {
+    container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-certificate"></i>
                 <span>
@@ -637,60 +658,57 @@ function displayCertificate(cert) {
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    const valid =
-        Boolean(cert.valid);
+  const valid =
+    Boolean(cert.valid);
 
-    const matches =
-        Boolean(cert.matches_target);
+  const matches =
+    Boolean(cert.matches_target);
 
-    const certificateOK =
-        valid && matches;
+  const certificateOK =
+    valid && matches;
 
-    const days =
-        Number(
-            cert.days_remaining
-        );
+  const days =
+    Number(
+      cert.days_remaining
+    );
 
-    let expiryClass =
-        "status-pass";
+  let expiryClass =
+    "status-pass";
 
-    if (days <= 30) {
-        expiryClass =
-            "status-warn";
-    }
+  if (days <= 30) {
+    expiryClass =
+      "status-warn";
+  }
 
-    if (days <= 0) {
-        expiryClass =
-            "status-fail";
-    }
+  if (days <= 0) {
+    expiryClass =
+      "status-fail";
+  }
 
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="certificate-grid">
 
             <div class="tls-detail">
 
                 <dt>STATUS</dt>
 
-                <dd class="${
-                    certificateOK
-                        ? "status-pass"
-                        : "status-fail"
-                }">
+                <dd class="${certificateOK
+      ? "status-pass"
+      : "status-fail"
+    }">
 
-                    <i class="fas ${
-                        certificateOK
-                            ? "fa-check"
-                            : "fa-xmark"
-                    }"></i>
+                    <i class="fas ${certificateOK
+      ? "fa-check"
+      : "fa-xmark"
+    }"></i>
 
-                    ${
-                        certificateOK
-                            ? "VALID"
-                            : "INVALID"
-                    }
+                    ${certificateOK
+      ? "VALID"
+      : "INVALID"
+    }
 
                 </dd>
 
@@ -703,8 +721,8 @@ function displayCertificate(cert) {
 
                 <dd>
                     ${escapeHtml(
-                        cert.subject
-                    )}
+      cert.subject
+    )}
                 </dd>
 
             </div>
@@ -716,8 +734,8 @@ function displayCertificate(cert) {
 
                 <dd>
                     ${escapeHtml(
-                        cert.issuer
-                    )}
+      cert.issuer
+    )}
                 </dd>
 
             </div>
@@ -729,8 +747,8 @@ function displayCertificate(cert) {
 
                 <dd>
                     ${escapeHtml(
-                        cert.not_after
-                    )}
+      cert.not_after
+    )}
                 </dd>
 
             </div>
@@ -742,8 +760,8 @@ function displayCertificate(cert) {
 
                 <dd class="${expiryClass}">
                     ${Number.isFinite(days)
-                        ? days
-                        : "—"}
+      ? days
+      : "—"}
                 </dd>
 
             </div>
@@ -753,17 +771,15 @@ function displayCertificate(cert) {
 
                 <dt>HOSTNAME MATCH</dt>
 
-                <dd class="${
-                    matches
-                        ? "status-pass"
-                        : "status-fail"
-                }">
+                <dd class="${matches
+      ? "status-pass"
+      : "status-fail"
+    }">
 
-                    ${
-                        matches
-                            ? "YES"
-                            : "NO"
-                    }
+                    ${matches
+      ? "YES"
+      : "NO"
+    }
 
                 </dd>
 
@@ -776,8 +792,8 @@ function displayCertificate(cert) {
 
                 <dd>
                     ${escapeHtml(
-                        cert.signature_algorithm
-                    )}
+      cert.signature_algorithm
+    )}
                 </dd>
 
             </div>
@@ -789,8 +805,8 @@ function displayCertificate(cert) {
 
                 <dd>
                     ${escapeHtml(
-                        cert.public_key
-                    )}
+      cert.public_key
+    )}
                 </dd>
 
             </div>
@@ -802,8 +818,8 @@ function displayCertificate(cert) {
 
                 <dd class="break-word">
                     ${escapeHtml(
-                        cert.serial_number
-                    )}
+      cert.serial_number
+    )}
                 </dd>
 
             </div>
@@ -814,23 +830,21 @@ function displayCertificate(cert) {
                 <dt>WILDCARD</dt>
 
                 <dd>
-                    ${
-                        cert.wildcard
-                            ? "YES"
-                            : "NO"
-                    }
+                    ${cert.wildcard
+      ? "YES"
+      : "NO"
+    }
                 </dd>
 
             </div>
 
         </div>
 
-        ${
-            Array.isArray(
-                cert.dns_names
-            ) &&
-            cert.dns_names.length
-                ? `
+        ${Array.isArray(
+      cert.dns_names
+    ) &&
+      cert.dns_names.length
+      ? `
                     <div class="certificate-san">
 
                         <strong>
@@ -840,21 +854,21 @@ function displayCertificate(cert) {
                         <div class="tag-list">
 
                             ${cert.dns_names
-                                .map(
-                                    name => `
+        .map(
+          name => `
                                         <span class="tag">
                                             ${escapeHtml(name)}
                                         </span>
                                     `
-                                )
-                                .join("")}
+        )
+        .join("")}
 
                         </div>
 
                     </div>
                   `
-                : ""
-        }
+      : ""
+    }
     `;
 }
 
@@ -864,18 +878,18 @@ function displayCertificate(cert) {
    ========================================================= */
 
 function displayRobots(robots) {
-    const container =
-        $("robotsDetails");
+  const container =
+    $("robotsDetails");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    if (
-        !robots ||
-        !robots.found
-    ) {
-        container.innerHTML = `
+  if (
+    !robots ||
+    !robots.found
+  ) {
+    container.innerHTML = `
             <div class="empty-state">
 
                 <i class="fas fa-robot"></i>
@@ -887,38 +901,38 @@ function displayRobots(robots) {
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    const disallowed =
-        Array.isArray(
-            robots.disallowed
-        )
-            ? robots.disallowed
-            : [];
+  const disallowed =
+    Array.isArray(
+      robots.disallowed
+    )
+      ? robots.disallowed
+      : [];
 
-    const allowed =
-        Array.isArray(
-            robots.allowed
-        )
-            ? robots.allowed
-            : [];
+  const allowed =
+    Array.isArray(
+      robots.allowed
+    )
+      ? robots.allowed
+      : [];
 
-    const sensitive =
-        Array.isArray(
-            robots.sensitive_paths
-        )
-            ? robots.sensitive_paths
-            : [];
+  const sensitive =
+    Array.isArray(
+      robots.sensitive_paths
+    )
+      ? robots.sensitive_paths
+      : [];
 
-    const sitemaps =
-        Array.isArray(
-            robots.sitemaps
-        )
-            ? robots.sitemaps
-            : [];
+  const sitemaps =
+    Array.isArray(
+      robots.sitemaps
+    )
+      ? robots.sitemaps
+      : [];
 
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="robots-summary">
 
             <div class="csp-metric">
@@ -960,11 +974,10 @@ function displayRobots(robots) {
             </div>
 
 
-            <div class="csp-metric ${
-                sensitive.length
-                    ? "warn"
-                    : "pass"
-            }">
+            <div class="csp-metric ${sensitive.length
+      ? "warn"
+      : "pass"
+    }">
 
                 <strong>
                     ${sensitive.length}
@@ -979,9 +992,8 @@ function displayRobots(robots) {
         </div>
 
 
-        ${
-            sensitive.length
-                ? `
+        ${sensitive.length
+      ? `
                     <div class="robots-warning">
 
                         <h4>
@@ -992,22 +1004,22 @@ function displayRobots(robots) {
                         <div class="robots-path-list">
 
                             ${sensitive
-                                .map(
-                                    path => `
+        .map(
+          path => `
                                         <div class="robots-path">
 
                                             <i class="fas fa-folder"></i>
 
                                             <code>
                                                 ${escapeHtml(
-                                                    path
-                                                )}
+            path
+          )}
                                             </code>
 
                                         </div>
                                     `
-                                )
-                                .join("")}
+        )
+        .join("")}
 
                         </div>
 
@@ -1019,7 +1031,7 @@ function displayRobots(robots) {
 
                     </div>
                   `
-                : `
+      : `
                     <div class="empty-state">
 
                         <i class="fas fa-shield-halved"></i>
@@ -1030,12 +1042,11 @@ function displayRobots(robots) {
 
                     </div>
                   `
-        }
+    }
 
 
-        ${
-            disallowed.length
-                ? `
+        ${disallowed.length
+      ? `
                     <div class="robots-section">
 
                         <h4>
@@ -1045,28 +1056,27 @@ function displayRobots(robots) {
                         <div class="tag-list">
 
                             ${disallowed
-                                .map(
-                                    path => `
+        .map(
+          path => `
                                         <span class="tag">
                                             ${escapeHtml(
-                                                path
-                                            )}
+            path
+          )}
                                         </span>
                                     `
-                                )
-                                .join("")}
+        )
+        .join("")}
 
                         </div>
 
                     </div>
                   `
-                : ""
-        }
+      : ""
+    }
 
 
-        ${
-            sitemaps.length
-                ? `
+        ${sitemaps.length
+      ? `
                     <div class="robots-section">
 
                         <h4>
@@ -1076,23 +1086,23 @@ function displayRobots(robots) {
                         <div class="robots-sitemaps">
 
                             ${sitemaps
-                                .map(
-                                    sitemap => `
+        .map(
+          sitemap => `
                                         <div>
                                             ${escapeHtml(
-                                                sitemap
-                                            )}
+            sitemap
+          )}
                                         </div>
                                     `
-                                )
-                                .join("")}
+        )
+        .join("")}
 
                         </div>
 
                     </div>
                   `
-                : ""
-        }
+      : ""
+    }
     `;
 }
 
@@ -1102,27 +1112,27 @@ function displayRobots(robots) {
    ========================================================= */
 
 function displayRedirects(redirects) {
-    const container =
-        $("redirectsList") ||
-        $("redirectList");
+  const container =
+    $("redirectsList") ||
+    $("redirectList");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    if (!redirects.length) {
-        container.innerHTML = `
+  if (!redirects.length) {
+    container.innerHTML = `
             <div class="empty-state">
                 No redirects detected.
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML =
-        redirects.map(
-            (redirect, index) => `
+  container.innerHTML =
+    redirects.map(
+      (redirect, index) => `
                 <div class="redirect-item">
 
                     <div class="redirect-number">
@@ -1134,27 +1144,26 @@ function displayRedirects(redirects) {
                         <div>
                             HTTP
                             ${escapeHtml(
-                                redirect.status_code
-                            )}
+        redirect.status_code
+      )}
                         </div>
 
-                        ${
-                            redirect.location
-                                ? `
+                        ${redirect.location
+          ? `
                                     <code>
                                         ${escapeHtml(
-                                            redirect.location
-                                        )}
+            redirect.location
+          )}
                                     </code>
                                   `
-                                : ""
-                        }
+          : ""
+        }
 
                     </div>
 
                 </div>
             `
-        ).join("");
+    ).join("");
 }
 
 
@@ -1163,17 +1172,17 @@ function displayRedirects(redirects) {
    ========================================================= */
 
 function displayIssues(issues) {
-    const container =
-        $("issuesList") ||
-        $("findingsList") ||
-        $("recommendationsList");
+  const container =
+    $("issuesList") ||
+    $("findingsList") ||
+    $("recommendationsList");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    if (!issues.length) {
-        container.innerHTML = `
+  if (!issues.length) {
+    container.innerHTML = `
             <div class="empty-state">
 
                 <i class="fas fa-shield-check"></i>
@@ -1185,55 +1194,53 @@ function displayIssues(issues) {
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML =
-        issues.map(issue => {
+  container.innerHTML =
+    issues.map(issue => {
 
-            const severity =
-                String(
-                    issue.severity ||
-                    "Low"
-                ).toLowerCase();
+      const severity =
+        String(
+          issue.severity ||
+          "Low"
+        ).toLowerCase();
 
-            return `
+      return `
                 <div class="issue-card severity-${severity}">
 
                     <div class="issue-header">
 
                         <strong>
                             ${escapeHtml(
-                                issue.header
-                            )}
+        issue.header
+      )}
                         </strong>
 
                         <span class="severity-badge">
                             ${escapeHtml(
-                                issue.severity ||
-                                "Low"
-                            )}
+        issue.severity ||
+        "Low"
+      )}
                         </span>
 
                     </div>
 
 
-                    ${
-                        issue.explanation
-                            ? `
+                    ${issue.explanation
+          ? `
                                 <p>
                                     ${escapeHtml(
-                                        issue.explanation
-                                    )}
+            issue.explanation
+          )}
                                 </p>
                               `
-                            : ""
-                    }
+          : ""
+        }
 
 
-                    ${
-                        issue.remediation
-                            ? `
+                    ${issue.remediation
+          ? `
                                 <div class="remediation">
 
                                     <strong>
@@ -1241,17 +1248,17 @@ function displayIssues(issues) {
                                     </strong>
 
                                     ${escapeHtml(
-                                        issue.remediation
-                                    )}
+            issue.remediation
+          )}
 
                                 </div>
                               `
-                            : ""
-                    }
+          : ""
+        }
 
                 </div>
             `;
-        }).join("");
+    }).join("");
 }
 
 
@@ -1260,74 +1267,74 @@ function displayIssues(issues) {
    ========================================================= */
 
 function findHeader(
-    headers,
-    name
+  headers,
+  name
 ) {
-    return headers.find(
-        header =>
-            String(
-                header.name || ""
-            ).toLowerCase() ===
-            name.toLowerCase()
-    );
+  return headers.find(
+    header =>
+      String(
+        header.name || ""
+      ).toLowerCase() ===
+      name.toLowerCase()
+  );
 }
 
 
 function parseCSP(value) {
-    const directives = [];
+  const directives = [];
 
-    if (!value) {
-        return directives;
-    }
-
-    value
-        .split(";")
-        .map(
-            part => part.trim()
-        )
-        .filter(Boolean)
-        .forEach(
-            part => {
-
-                const tokens =
-                    part.split(
-                        /\s+/
-                    );
-
-                const name =
-                    tokens.shift();
-
-                directives.push({
-                    name,
-                    sources: tokens
-                });
-            }
-        );
-
+  if (!value) {
     return directives;
+  }
+
+  value
+    .split(";")
+    .map(
+      part => part.trim()
+    )
+    .filter(Boolean)
+    .forEach(
+      part => {
+
+        const tokens =
+          part.split(
+            /\s+/
+          );
+
+        const name =
+          tokens.shift();
+
+        directives.push({
+          name,
+          sources: tokens
+        });
+      }
+    );
+
+  return directives;
 }
 
 
 function displayCSP(headers) {
-    const container =
-        $("cspVisualizer") ||
-        $("cspDetails");
+  const container =
+    $("cspVisualizer") ||
+    $("cspDetails");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    const csp =
-        findHeader(
-            headers,
-            "Content-Security-Policy"
-        );
+  const csp =
+    findHeader(
+      headers,
+      "Content-Security-Policy"
+    );
 
-    if (
-        !csp ||
-        !csp.value
-    ) {
-        container.innerHTML = `
+  if (
+    !csp ||
+    !csp.value
+  ) {
+    container.innerHTML = `
             <div class="empty-state">
 
                 <i class="fas fa-shield-halved"></i>
@@ -1339,25 +1346,25 @@ function displayCSP(headers) {
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    const directives =
-        parseCSP(
-            csp.value
-        );
+  const directives =
+    parseCSP(
+      csp.value
+    );
 
-    if (!directives.length) {
-        container.innerHTML = `
+  if (!directives.length) {
+    container.innerHTML = `
             <div class="empty-state">
                 CSP header is empty or invalid.
             </div>
         `;
 
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="csp-summary">
 
             <div class="csp-metric">
@@ -1378,8 +1385,8 @@ function displayCSP(headers) {
         <div class="csp-directives">
 
             ${directives
-                .map(
-                    directive => `
+      .map(
+        directive => `
                         <div class="csp-directive">
 
                             <div class="csp-directive-name">
@@ -1387,39 +1394,38 @@ function displayCSP(headers) {
                                 <i class="fas fa-shield"></i>
 
                                 ${escapeHtml(
-                                    directive.name
-                                )}
+          directive.name
+        )}
 
                             </div>
 
                             <div class="csp-sources">
 
-                                ${
-                                    directive.sources.length
-                                        ? directive.sources
-                                            .map(
-                                                source => `
+                                ${directive.sources.length
+            ? directive.sources
+              .map(
+                source => `
                                                     <span class="csp-source">
                                                         ${escapeHtml(
-                                                            source
-                                                        )}
+                  source
+                )}
                                                     </span>
                                                 `
-                                            )
-                                            .join("")
-                                        : `
+              )
+              .join("")
+            : `
                                             <span class="csp-source">
                                                 No sources
                                             </span>
                                           `
-                                }
+          }
 
                             </div>
 
                         </div>
                     `
-                )
-                .join("")}
+      )
+      .join("")}
 
         </div>
     `;
@@ -1431,33 +1437,33 @@ function displayCSP(headers) {
    ========================================================= */
 
 function updateJSONPreview(result) {
-    const container =
-        $("jsonPreview") ||
-        $("jsonOutput");
+  const container =
+    $("jsonPreview") ||
+    $("jsonOutput");
 
-    if (!container) {
-        return;
-    }
+  if (!container) {
+    return;
+  }
 
-    const json =
-        JSON.stringify(
-            result,
-            null,
-            2
-        );
+  const json =
+    JSON.stringify(
+      result,
+      null,
+      2
+    );
 
-    if (
-        container.tagName ===
-        "TEXTAREA"
-    ) {
-        container.value =
-            json;
+  if (
+    container.tagName ===
+    "TEXTAREA"
+  ) {
+    container.value =
+      json;
 
-        return;
-    }
+    return;
+  }
 
-    container.textContent =
-        json;
+  container.textContent =
+    json;
 }
 
 
@@ -1466,60 +1472,60 @@ function updateJSONPreview(result) {
    ========================================================= */
 
 async function copyJSON() {
-    if (!lastResult) {
-        showToast(
-            "No scan result available.",
-            "error"
-        );
+  if (!lastResult) {
+    showToast(
+      "No scan result available.",
+      "error"
+    );
 
-        return;
-    }
+    return;
+  }
 
-    const json =
-        JSON.stringify(
-            lastResult,
-            null,
-            2
-        );
+  const json =
+    JSON.stringify(
+      lastResult,
+      null,
+      2
+    );
 
-    try {
-        await navigator.clipboard.writeText(
-            json
-        );
+  try {
+    await navigator.clipboard.writeText(
+      json
+    );
 
-        showToast(
-            "JSON copied to clipboard.",
-            "success"
-        );
+    showToast(
+      "JSON copied to clipboard.",
+      "success"
+    );
 
-    } catch (error) {
-        console.error(error);
+  } catch (error) {
+    console.error(error);
 
-        const textarea =
-            document.createElement(
-                "textarea"
-            );
+    const textarea =
+      document.createElement(
+        "textarea"
+      );
 
-        textarea.value =
-            json;
+    textarea.value =
+      json;
 
-        document.body.appendChild(
-            textarea
-        );
+    document.body.appendChild(
+      textarea
+    );
 
-        textarea.select();
+    textarea.select();
 
-        document.execCommand(
-            "copy"
-        );
+    document.execCommand(
+      "copy"
+    );
 
-        textarea.remove();
+    textarea.remove();
 
-        showToast(
-            "JSON copied.",
-            "success"
-        );
-    }
+    showToast(
+      "JSON copied.",
+      "success"
+    );
+  }
 }
 
 
@@ -1528,93 +1534,93 @@ async function copyJSON() {
    ========================================================= */
 
 function exportJSON() {
-    if (!lastResult) {
-        showToast(
-            "No scan result available.",
-            "error"
-        );
-
-        return;
-    }
-
-    const json =
-        JSON.stringify(
-            lastResult,
-            null,
-            2
-        );
-
-    const blob =
-        new Blob(
-            [json],
-            {
-                type:
-                    "application/json"
-            }
-        );
-
-    const url =
-        URL.createObjectURL(
-            blob
-        );
-
-    let hostname =
-        "target";
-
-    try {
-        hostname =
-            new URL(
-                lastResult.url
-            ).hostname;
-    } catch {
-        hostname =
-            "target";
-    }
-
-    hostname =
-        hostname.replace(
-            /[^a-z0-9.-]/gi,
-            "_"
-        );
-
-    const date =
-        new Date()
-            .toISOString()
-            .slice(
-                0,
-                10
-            );
-
-    const filename =
-        `security-report-${hostname}-${date}.json`;
-
-    const link =
-        document.createElement(
-            "a"
-        );
-
-    link.href =
-        url;
-
-    link.download =
-        filename;
-
-    document.body.appendChild(
-        link
-    );
-
-    link.click();
-
-    link.remove();
-
-    URL.revokeObjectURL(
-        url
-    );
-
+  if (!lastResult) {
     showToast(
-        "JSON report exported.",
-        "success"
+      "No scan result available.",
+      "error"
     );
+
+    return;
+  }
+
+  const json =
+    JSON.stringify(
+      lastResult,
+      null,
+      2
+    );
+
+  const blob =
+    new Blob(
+      [json],
+      {
+        type:
+          "application/json"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  let hostname =
+    "target";
+
+  try {
+    hostname =
+      new URL(
+        lastResult.url
+      ).hostname;
+  } catch {
+    hostname =
+      "target";
+  }
+
+  hostname =
+    hostname.replace(
+      /[^a-z0-9.-]/gi,
+      "_"
+    );
+
+  const date =
+    new Date()
+      .toISOString()
+      .slice(
+        0,
+        10
+      );
+
+  const filename =
+    `security-report-${hostname}-${date}.json`;
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+  link.href =
+    url;
+
+  link.download =
+    filename;
+
+  document.body.appendChild(
+    link
+  );
+
+  link.click();
+
+  link.remove();
+
+  URL.revokeObjectURL(
+    url
+  );
+
+  showToast(
+    "JSON report exported.",
+    "success"
+  );
 }
 
 
@@ -1623,7 +1629,7 @@ function exportJSON() {
    ========================================================= */
 
 function downloadJSON() {
-    exportJSON();
+  exportJSON();
 }
 
 
@@ -1633,101 +1639,617 @@ function downloadJSON() {
 
 function initEventListeners() {
 
-    const scanButtons = [
-        $("scanBtn"),
-        $("analyzeBtn"),
-        $("scanButton")
-    ].filter(Boolean);
+  const scanButtons = [
+    $("scanBtn"),
+    $("analyzeBtn"),
+    $("scanButton")
+  ].filter(Boolean);
 
-    scanButtons.forEach(
-        button => {
+  scanButtons.forEach(
+    button => {
 
-            button.addEventListener(
-                "click",
-                runScan
-            );
-
-        }
-    );
-
-
-    const input =
-        $("urlInput") ||
-        $("url") ||
-        $("targetUrl");
-
-    if (input) {
-
-        input.addEventListener(
-            "keydown",
-            event => {
-
-                if (
-                    event.key ===
-                    "Enter"
-                ) {
-                    event.preventDefault();
-
-                    runScan();
-                }
-
-            }
-        );
+      button.addEventListener(
+        "click",
+        runScan
+      );
 
     }
+  );
 
 
-    const copyButtons = [
-        $("copyBtn"),
-        $("copyJsonBtn"),
-        $("copyJSON")
-    ].filter(Boolean);
+  const input =
+    $("urlInput") ||
+    $("url") ||
+    $("targetUrl");
 
-    copyButtons.forEach(
-        button => {
+  if (input) {
 
-            button.addEventListener(
-                "click",
-                copyJSON
-            );
+    input.addEventListener(
+      "keydown",
+      event => {
 
+        if (
+          event.key ===
+          "Enter"
+        ) {
+          event.preventDefault();
+
+          runScan();
         }
+
+      }
     );
 
+  }
 
-    const exportButtons = [
-        $("exportJsonBtn"),
-        $("exportJSON"),
-        $("downloadJsonBtn"),
-        $("downloadJSON")
-    ].filter(Boolean);
 
-    exportButtons.forEach(
-        button => {
+  const copyButtons = [
+    $("copyBtn"),
+    $("copyJsonBtn"),
+    $("copyJSON")
+  ].filter(Boolean);
 
-            button.addEventListener(
-                "click",
-                exportJSON
-            );
+  copyButtons.forEach(
+    button => {
 
-        }
-    );
+      button.addEventListener(
+        "click",
+        copyJSON
+      );
+
+    }
+  );
+
+
+  const exportButtons = [
+    $("exportJsonBtn"),
+    $("exportJSON"),
+    $("downloadJsonBtn"),
+    $("downloadJSON")
+  ].filter(Boolean);
+
+  exportButtons.forEach(
+    button => {
+
+      button.addEventListener(
+        "click",
+        exportJSON
+      );
+
+    }
+  );
 }
 
+async function generatePDFReport() {
+  if (!lastResult || !lastResult.url) {
+    showToast(
+      "Run a scan first.",
+      "error"
+    );
+
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "/api/report",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          url: lastResult.url
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Failed to generate report."
+      );
+    }
+
+    const html =
+      await response.text();
+
+    const reportWindow =
+      window.open(
+        "",
+        "_blank"
+      );
+
+    if (!reportWindow) {
+      throw new Error(
+        "Popup blocked. Allow popups for this site."
+      );
+    }
+
+    reportWindow.document.open();
+
+    reportWindow.document.write(
+      html
+    );
+
+    reportWindow.document.close();
+
+    reportWindow.onload = () => {
+      setTimeout(() => {
+        reportWindow.print();
+      }, 500);
+    };
+
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+
+    const pdfBtn =
+      document.getElementById(
+        "pdfBtn"
+      );
+
+    if (pdfBtn) {
+      pdfBtn.addEventListener(
+        "click",
+        generatePDFReport
+      );
+    }
+
+  }
+);
+
+function displayHSTS(hsts) {
+  const container =
+    document.getElementById(
+      "hstsDetails"
+    );
+
+  if (!container) return;
+
+  if (!hsts) {
+    container.innerHTML =
+      `<div class="empty-state">No HSTS data.</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+        <div class="certificate-grid">
+
+            <div class="tls-detail">
+                <dt>STATUS</dt>
+                <dd class="status-${escapeHtml(hsts.status)}">
+                    ${escapeHtml(hsts.status)}
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>MAX-AGE</dt>
+                <dd>
+                    ${escapeHtml(hsts.max_age)}
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>INCLUDE SUBDOMAINS</dt>
+                <dd>
+                    ${hsts.include_subdomains ? "YES" : "NO"}
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>PRELOAD</dt>
+                <dd>
+                    ${hsts.preload ? "YES" : "NO"}
+                </dd>
+            </div>
+
+        </div>
+
+        <p class="text-muted">
+            ${escapeHtml(hsts.message)}
+        </p>
+    `;
+}
+
+
+function displaySecurityTxt(data) {
+  const container =
+    document.getElementById(
+      "securityTxtDetails"
+    );
+
+  if (!container) return;
+
+  if (!data || !data.found) {
+    container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-file-shield"></i>
+                security.txt not found.
+            </div>
+        `;
+
+    return;
+  }
+
+  container.innerHTML = `
+        <div class="certificate-grid">
+
+            <div class="tls-detail">
+                <dt>FOUND</dt>
+                <dd class="status-pass">
+                    YES
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>VALID</dt>
+                <dd class="${data.valid
+      ? "status-pass"
+      : "status-warn"
+    }">
+                    ${data.valid ? "YES" : "NO"}
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>CONTACTS</dt>
+                <dd>
+                    ${data.contact?.length || 0}
+                </dd>
+            </div>
+
+            <div class="tls-detail">
+                <dt>EXPIRES</dt>
+                <dd>
+                    ${escapeHtml(
+      data.expires || "—"
+    )}
+                </dd>
+            </div>
+
+        </div>
+
+        <p class="text-muted">
+            ${escapeHtml(data.message)}
+        </p>
+
+        ${data.contact?.length
+      ? `
+                    <div class="tag-list">
+                        ${data.contact.map(
+        contact => `
+                                <span class="tag">
+                                    ${escapeHtml(contact)}
+                                </span>
+                            `
+      ).join("")}
+                    </div>
+                  `
+      : ""
+    }
+    `;
+}
+
+
+function displayTechnologies(data) {
+  const container =
+    document.getElementById(
+      "technologyDetails"
+    );
+
+  if (!container) return;
+
+  const technologies =
+    data?.technologies || [];
+
+  if (!technologies.length) {
+    container.innerHTML = `
+            <div class="empty-state">
+                No technologies detected.
+            </div>
+        `;
+
+    return;
+  }
+
+  container.innerHTML = `
+        <div class="csp-directives">
+
+            ${technologies.map(
+    tech => `
+                    <div class="csp-directive">
+
+                        <div class="csp-directive-name">
+                            <i class="fas fa-microchip"></i>
+                            ${escapeHtml(
+      tech.name
+    )}
+                        </div>
+
+                        <div class="csp-sources">
+
+                            <span class="csp-source">
+                                ${escapeHtml(
+      tech.category
+    )}
+                            </span>
+
+                            <span class="csp-source">
+                                ${escapeHtml(
+      tech.confidence
+    )}% confidence
+                            </span>
+
+                            ${tech.evidence?.length
+        ? tech.evidence.map(
+          evidence => `
+                                            <span class="csp-source">
+                                                ${escapeHtml(
+            evidence
+          )}
+                                            </span>
+                                        `
+        ).join("")
+        : ""
+      }
+
+                        </div>
+
+                    </div>
+                `
+  ).join("")}
+
+        </div>
+    `;
+}
+
+
+function displayInformationDisclosure(
+  findings
+) {
+  const container =
+    document.getElementById(
+      "informationDisclosureDetails"
+    );
+
+  if (!container) return;
+
+  if (!findings?.length) {
+    container.innerHTML = `
+            <div class="empty-state">
+                No obvious information disclosure detected.
+            </div>
+        `;
+
+    return;
+  }
+
+  container.innerHTML =
+    findings.map(
+      finding => `
+                <div class="issue-card">
+
+                    <div class="issue-header">
+
+                        <strong>
+                            ${escapeHtml(
+        finding.type
+      )}
+                        </strong>
+
+                        <span class="severity-badge">
+                            ${escapeHtml(
+        finding.severity
+      )}
+                        </span>
+
+                    </div>
+
+                    ${finding.header
+          ? `
+                                <code>
+                                    ${escapeHtml(
+            finding.header
+          )}
+                                </code>
+                              `
+          : ""
+        }
+
+                    <p>
+                        ${escapeHtml(
+          finding.message
+        )}
+                    </p>
+
+                    <code>
+                        ${escapeHtml(
+          finding.value
+        )}
+                    </code>
+
+                </div>
+            `
+    ).join("");
+}
+
+
+function displayHTTPMethods(data) {
+  const container =
+    document.getElementById(
+      "httpMethodsDetails"
+    );
+
+  if (!container) return;
+
+  container.innerHTML = `
+        <div class="csp-summary">
+
+            <div class="csp-metric">
+                <strong>
+                    ${data?.methods?.length || 0}
+                </strong>
+                <span>
+                    METHODS
+                </span>
+            </div>
+
+            <div class="csp-metric ${data?.dangerous?.length
+      ? "warn"
+      : "pass"
+    }">
+
+                <strong>
+                    ${data?.dangerous?.length || 0}
+                </strong>
+
+                <span>
+                    DANGEROUS
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="tag-list">
+
+            ${(data?.methods || [])
+      .map(
+        method => `
+                        <span class="tag">
+                            ${escapeHtml(method)}
+                        </span>
+                    `
+      )
+      .join("")}
+
+        </div>
+
+        ${data?.dangerous?.length
+      ? `
+                    <p class="status-warn">
+                        Dangerous:
+                        ${data.dangerous
+        .map(
+          escapeHtml
+        )
+        .join(", ")}
+                    </p>
+                  `
+      : `
+                    <p class="status-pass">
+                        No dangerous methods detected.
+                    </p>
+                  `
+    }
+    `;
+}
+
+
+function displayCORS(data) {
+  const container =
+    document.getElementById(
+      "corsDetails"
+    );
+
+  if (!container) return;
+
+  if (!data?.present) {
+    container.innerHTML = `
+            <div class="empty-state">
+                No CORS policy detected.
+            </div>
+        `;
+
+    return;
+  }
+
+  container.innerHTML = `
+        <div class="certificate-grid">
+
+            <div class="tls-detail">
+
+                <dt>STATUS</dt>
+
+                <dd class="status-${escapeHtml(
+    data.status
+  )}">
+
+                    ${escapeHtml(
+    data.status
+  )}
+
+                </dd>
+
+            </div>
+
+            <div class="tls-detail">
+
+                <dt>ALLOW ORIGIN</dt>
+
+                <dd>
+                    ${escapeHtml(
+    data.allow_origin
+  )}
+                </dd>
+
+            </div>
+
+            <div class="tls-detail">
+
+                <dt>CREDENTIALS</dt>
+
+                <dd>
+                    ${data.allow_credentials
+      ? "YES"
+      : "NO"
+    }
+                </dd>
+
+            </div>
+
+        </div>
+
+        <p class="${data.dangerous
+      ? "status-fail"
+      : "text-muted"
+    }">
+
+            ${escapeHtml(
+      data.message
+    )}
+
+        </p>
+    `;
+}
 
 /* =========================================================
    INITIALIZATION
    ========================================================= */
 
 document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+  "DOMContentLoaded",
+  () => {
 
-        initEventListeners();
+    initEventListeners();
 
-        console.log(
-            "HTTP Header Analyzer initialized."
-        );
+    console.log(
+      "HTTP Header Analyzer initialized."
+    );
 
-    }
+  }
 );
