@@ -21,8 +21,21 @@ func main() {
 
     // API routes
     apiRouter := router.PathPrefix("/api").Subrouter()
-    apiRouter.HandleFunc("/analyze", handler.HandleAnalyze).Methods("POST")
-    apiRouter.HandleFunc("/health", handler.HandleHealth).Methods("GET")
+
+    apiRouter.HandleFunc(
+	    "/analyze",
+	    handler.HandleAnalyze,
+    ).Methods("POST")
+
+    apiRouter.HandleFunc(
+	    "/report",
+	    handler.HandleReport,
+    ).Methods("POST")
+
+    apiRouter.HandleFunc(
+	    "/health",
+	    handler.HandleHealth,
+    ).Methods("GET")
 
     // Web routes
     router.HandleFunc("/", handler.HandleIndex).Methods("GET")
