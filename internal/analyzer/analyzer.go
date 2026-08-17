@@ -41,36 +41,113 @@ func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResult, error) {
 }
 
 // AnalyzeWithContext performs analysis with a custom context
-func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*models.AnalysisResult, error) {
-    req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create request: %w", err)
-    }
-    resp, err := a.client.Do(req)
-    if err != nil {
-        return nil, fmt.Errorf("failed to fetch URL: %w", err)
-    }
-    defer resp.Body.Close()
+func (a *Analyzer) AnalyzeWithContext(
+	ctx context.Context,
+	targetURL string,
+) (*models.AnalysisResult, error) {
 
-    result := &models.AnalysisResult{
-        URL:       targetURL,
-        Timestamp: time.Now(),
-    }
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		targetURL,
+		nil,
+	)
 
-    // 1. Analyze Security Headers using Rule Engine
-    result.SecurityHeaders, result.Issues = analyzeSecurityHeadersWithRules(resp.Header)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to create request: %w",
+			err,
+		)
+	}
 
-    // 2. Analyze TLS information
-    result.TLS = analyzeTLS(resp)
+	resp, err := a.client.Do(req)
 
-    // 3. Analyze redirects
-    result.Redirects = a.analyzeRedirects(targetURL)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to fetch URL: %w",
+			err,
+		)
+	}
 
-    // 4. Calculate score and rating
-    result.Score = calculateScore(result.SecurityHeaders, result.TLS, result.Redirects)
-    result.Rating = calculateRating(result.Score)
+	defer resp.Body.Close()
 
-    return result, nil
+	result := &models.AnalysisResult{
+		URL:       targetURL,
+		Timestamp: time.Now(),
+	}
+
+
+	// Security headers
+
+	result.SecurityHeaders,
+		result.Issues =
+		analyzeSecurityHeadersWithRules(
+			resp.Header,
+		)
+
+
+	// TLS
+
+	result.TLS =
+		analyzeTLS(resp)
+
+
+	// Certificate
+
+	if resp.TLS != nil &&
+		len(resp.TLS.PeerCertificates) > 0 {
+
+		result.Certificate =
+			analyzeCertificate(
+				targetURL,
+				resp.TLS.PeerCertificates[0],
+			)
+
+	} else {
+
+		result.Certificate =
+			models.CertificateInfo{
+				Present: false,
+				Valid:   false,
+			}
+	}
+
+
+	// Redirects
+
+	result.Redirects =
+		a.analyzeRedirects(targetURL)
+
+
+	// Robots.txt
+
+	result.Robots =
+		analyzeRobots(
+			ctx,
+			a.client,
+			targetURL,
+		)
+
+
+	// Score
+
+	result.Score =
+		calculateScore(
+			result.SecurityHeaders,
+			result.TLS,
+			result.Redirects,
+		)
+
+
+	// Grade
+
+	result.Rating =
+		calculateRating(
+			result.Score,
+		)
+
+
+	return result, nil
 }
 
 // analyzeSecurityHeadersWithRules iterates through the RuleRegistry and applies checks
@@ -245,18 +322,28 @@ func calculateScore(headers []models.SecurityHeader, tls models.TLSInfo, redirec
 
 // calculateRating converts a score to a letter grade
 func calculateRating(score int) string {
-    switch {
-    case score >= 95:
-        return "A+"
-    case score >= 85:
-        return "A"
-    case score >= 70:
-        return "B"
-    case score >= 55:
-        return "C"
-    case score >= 40:
-        return "D"
-    default:
-        return "F"
-    }
+	switch {
+	case score >= 97:
+		return "A+"
+	case score >= 93:
+		return "A"
+	case score >= 90:
+		return "A-"
+	case score >= 87:
+		return "B+"
+	case score >= 83:
+		return "B"
+	case score >= 80:
+		return "B-"
+	case score >= 77:
+		return "C+"
+	case score >= 73:
+		return "C"
+	case score >= 70:
+		return "C-"
+	case score >= 60:
+		return "D"
+	default:
+		return "F"
+	}
 }

@@ -1,175 +1,533 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Header Analyzer</title>
-    <link rel="stylesheet" href="../static/style.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Icons -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-  </head>
-  <body>
-    <!-- Background Matrix Effect -->
-    <canvas id="matrix"></canvas>
 
-    <!-- The Eye -->
-    <div class="eye-container">
-      <div class="eye"></div>
-      <div class="pupil"></div>
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>
+    Header Analyzer
+  </title>
+
+
+  <link rel="stylesheet" href="../static/style.css" />
+
+
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+
+  <!-- Icons -->
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+</head>
+
+
+<body>
+
+  <!-- ================================================== -->
+  <!-- MATRIX BACKGROUND -->
+  <!-- ================================================== -->
+
+  <canvas id="matrix"></canvas>
+
+
+  <!-- ================================================== -->
+  <!-- THE EYE -->
+  <!-- ================================================== -->
+
+  <div class="eye-container">
+
+    <div class="eye"></div>
+
+    <div class="pupil"></div>
+
+  </div>
+
+
+  <!-- ================================================== -->
+  <!-- TOAST -->
+  <!-- ================================================== -->
+
+  <div id="toast-container"></div>
+
+
+  <!-- ================================================== -->
+  <!-- PRELOADER -->
+  <!-- ================================================== -->
+
+  <div id="preloader" class="preloader hidden">
+
+    <div class="scanner"></div>
+
+    <div class="loading-text">
+      ANALYZING TARGET...
     </div>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container"></div>
+  </div>
 
-    <!-- Preloader (Skeleton Style) -->
-    <div id="preloader" class="preloader hidden">
-      <div class="scanner"></div>
-      <div class="loading-text">ANALYZING TARGET...</div>
-    </div>
 
-    <div class="container">
-      <header class="terminal-window">
-        <div class="terminal-header">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-          <span class="title">root@ItsWanheda:~/analyzer</span>
-          <div class="theme-toggle" id="themeToggle">
-            <i class="fas fa-sun"></i>
-          </div>
+  <!-- ================================================== -->
+  <!-- MAIN CONTAINER -->
+  <!-- ================================================== -->
+
+  <div class="container">
+
+
+    <!-- ================================================== -->
+    <!-- HEADER -->
+    <!-- ================================================== -->
+
+    <header class="terminal-window">
+
+      <div class="terminal-header">
+
+        <span class="dot red"></span>
+
+        <span class="dot yellow"></span>
+
+        <span class="dot green"></span>
+
+
+        <span class="title">
+          root@ItsWanheda:~/analyzer
+        </span>
+
+
+        <div class="theme-toggle" id="themeToggle">
+
+          <i class="fas fa-sun"></i>
+
         </div>
-        <h1>
-          <span class="glitch" data-text="HTTP_HEADER_ANALYZER"
-            >HTTP_HEADER_ANALYZER</span
-          >
-        </h1>
-        <p class="subtitle">
-          SECURITY PROTOCOL v1.2 // <span id="status">STANDBY</span>
-        </p>
-      </header>
 
-      <main>
-        <section class="input-terminal terminal-window">
-          <div class="terminal-header">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-            <span class="title">input_target.sh</span>
+      </div>
+
+
+      <h1>
+
+        <span class="glitch" data-text="HTTP_HEADER_ANALYZER">
+          HTTP_HEADER_ANALYZER
+        </span>
+
+      </h1>
+
+
+      <p class="subtitle">
+
+        SECURITY PROTOCOL v1.2 //
+
+        <span id="status">
+          STANDBY
+        </span>
+
+      </p>
+
+    </header>
+
+
+    <main>
+
+
+      <!-- ================================================== -->
+      <!-- INPUT -->
+      <!-- ================================================== -->
+
+      <section class="input-terminal terminal-window">
+
+        <div class="terminal-header">
+
+          <span class="dot red"></span>
+
+          <span class="dot yellow"></span>
+
+          <span class="dot green"></span>
+
+
+          <span class="title">
+            input_target.sh
+          </span>
+
+        </div>
+
+
+        <form id="analyzeForm">
+
+          <div class="form-group">
+
+            <label for="urlInput">
+              > TARGET_URL:
+            </label>
+
+
+            <input type="text" id="urlInput" placeholder="https://example.com" required autocomplete="off" />
+
           </div>
-          <form id="analyzeForm">
-            <div class="form-group">
-              <label for="urlInput">> TARGET_URL:</label>
-              <input
-                type="text"
-                id="urlInput"
-                placeholder="https://example.com"
-                required
-                autocomplete="off"
-              />
-            </div>
-            <button type="submit" id="analyzeBtn">
-              <span class="btn-text">INITIATE_SCAN</span>
-            </button>
-          </form>
-        </section>
 
-        <section
-          class="results-terminal terminal-window"
-          id="resultsSection"
-          style="display: none"
-        >
-          <div class="terminal-header">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-            <span class="title">analysis_report.log</span>
-            <button class="copy-btn" id="copyBtn" title="Copy JSON">
+
+          <button type="submit" id="analyzeBtn">
+
+            <span class="btn-text">
+              INITIATE_SCAN
+            </span>
+
+          </button>
+
+        </form>
+
+      </section>
+
+
+      <!-- ================================================== -->
+      <!-- RESULTS -->
+      <!-- ================================================== -->
+
+      <section class="results-terminal terminal-window" id="resultsSection" style="display: none">
+
+
+        <!-- RESULT HEADER -->
+
+        <div class="terminal-header">
+
+          <span class="dot red"></span>
+
+          <span class="dot yellow"></span>
+
+          <span class="dot green"></span>
+
+
+          <span class="title">
+            analysis_report.log
+          </span>
+
+
+          <div class="report-actions">
+
+            <button class="copy-btn" id="copyBtn" title="Copy JSON" type="button">
               <i class="fas fa-copy"></i>
             </button>
+
+            <button class="copy-btn" id="exportJsonBtn" title="Export JSON" type="button">
+              <i class="fas fa-file-export"></i>
+            </button>
+
           </div>
 
-          <div class="dashboard-grid">
-            <!-- Score -->
-            <div class="card">
-              <h3>SECURITY_SCORE</h3>
-              <div class="score-display">
-                <div class="score-circle" id="scoreCircle">
-                  <span class="score-value" id="scoreValue">0</span>
-                  <span class="score-label">/100</span>
-                </div>
-                <div class="rating-badge" id="ratingBadge">-</div>
-              </div>
-            </div>
-
-            <!-- Issues Summary (New Section) -->
-            <div class="card full-width" id="issuesCard" style="display: none">
-              <h3>SECURITY_ISSUES</h3>
-              <div id="issuesList" class="table-container">
-                <!-- Issues will be injected here -->
-              </div>
-            </div>
-
-            <!-- TLS -->
-            <div class="card full-width">
-              <h3>SSL/TLS_CONFIGURATION</h3>
-              <div class="grid-container" id="tlsDetails"></div>
-            </div>
-
-            <!-- Security Headers Table -->
-            <div class="card full-width">
-              <h3>HEADER_DETAILS</h3>
-              <input type="text" id="headerFilter" placeholder="Filter headers..." style="margin-bottom: 10px; padding: 5px; width: 100%;">
-              <div class="table-container">
-                <table id="headersTable">
-                  <thead>
-                    <tr>
-                      <th>HEADER_NAME</th>
-                      <th>VALUE</th>
-                      <th>STATUS</th>
-                      <th>DETAILS</th>
-                    </tr>
-                  </thead>
-                  <tbody id="headersBody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Redirects -->
-            <div class="card full-width">
-              <h3>REDIRECT_CHAIN</h3>
-              <div id="redirectsList"></div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer class="terminal-window">
-        <div class="terminal-header">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-          <span class="title">system_info</span>
         </div>
-        <p>
-          POWERED BY
-          <a
-            href="https://github.com/ItsWanheda"
-            target="_blank"
-            rel="noopener noreferrer"
-            >ItsWanheda</a
-          >
-          // SECURE YOUR INFRASTRUCTURE
-        </p>
-      </footer>
-    </div>
 
-    <script src="../static/app.js"></script>
-  </body>
+
+        <div class="dashboard-grid">
+
+
+          <!-- ================================================== -->
+          <!-- SECURITY SCORE -->
+          <!-- ================================================== -->
+
+          <div class="card">
+
+            <h3>
+              SECURITY_SCORE
+            </h3>
+
+
+            <div class="score-display">
+
+              <div class="score-circle" id="scoreCircle">
+
+                <span class="score-value" id="scoreValue">
+                  0
+                </span>
+
+                <span class="score-label">
+                  /100
+                </span>
+
+              </div>
+
+
+              <div class="rating-badge" id="ratingBadge">
+                -
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- ================================================== -->
+          <!-- SECURITY ISSUES -->
+          <!-- ================================================== -->
+
+          <div class="card full-width" id="issuesCard" style="display: none">
+
+            <h3>
+              SECURITY_ISSUES
+            </h3>
+
+
+            <div id="issuesList" class="table-container">
+
+              <!-- Issues injected by JS -->
+
+            </div>
+
+          </div>
+
+
+          <!-- ================================================== -->
+          <!-- CSP VISUALIZER -->
+          <!-- ================================================== -->
+
+          <div class="card full-width csp-visualizer-card" id="cspVisualizerCard">
+
+            <div class="csp-header-row">
+
+              <h3>
+                CSP_VISUALIZER
+              </h3>
+
+
+              <span class="csp-status" id="cspStatus">
+                NOT ANALYZED
+              </span>
+
+            </div>
+
+
+            <!-- RAW CSP -->
+
+            <div class="csp-raw-policy" id="cspRawPolicy">
+              NO CONTENT-SECURITY-POLICY HEADER FOUND
+            </div>
+
+
+            <!-- CSP METRICS -->
+
+            <div class="csp-summary" id="cspSummary">
+
+              <div class="csp-metric">
+
+                <strong>
+                  0
+                </strong>
+
+                <span>
+                  DIRECTIVES
+                </span>
+
+              </div>
+
+
+              <div class="csp-metric">
+
+                <strong>
+                  0
+                </strong>
+
+                <span>
+                  SOURCES
+                </span>
+
+              </div>
+
+
+              <div class="csp-metric">
+
+                <strong>
+                  -
+                </strong>
+
+                <span>
+                  WARNINGS
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <!-- CSP DIRECTIVES -->
+
+            <div class="csp-directives" id="cspDirectives">
+
+              <div class="csp-empty">
+
+                <i class="fas fa-shield-halved"></i>
+
+                <span>
+                  Run a scan to visualize
+                  the Content-Security-Policy.
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- ================================================== -->
+          <!-- TLS -->
+          <!-- ================================================== -->
+
+          <div class="card full-width">
+
+            <h3>
+              SSL/TLS_CONFIGURATION
+            </h3>
+
+
+            <div class="grid-container" id="tlsDetails"></div>
+
+          </div>
+
+          <div class="card full-width">
+
+            <h3>
+              CERTIFICATE_ANALYZER
+            </h3>
+
+            <div id="certificateDetails" class="grid-container"></div>
+
+          </div>
+
+
+          <div class="card full-width">
+
+            <h3>
+              ROBOTS.TXT_ANALYZER
+            </h3>
+
+            <div id="robotsDetails"></div>
+
+          </div>
+
+          <!-- ================================================== -->
+          <!-- SECURITY HEADERS -->
+          <!-- ================================================== -->
+
+          <div class="card full-width">
+
+            <h3>
+              HEADER_DETAILS
+            </h3>
+
+
+            <input type="text" id="headerFilter" placeholder="Filter headers..." style="
+                  margin-bottom: 10px;
+                  padding: 5px;
+                  width: 100%;
+                " />
+
+
+            <div class="table-container">
+
+              <table id="headersTable">
+
+                <thead>
+
+                  <tr>
+
+                    <th>
+                      HEADER_NAME
+                    </th>
+
+                    <th>
+                      VALUE
+                    </th>
+
+                    <th>
+                      STATUS
+                    </th>
+
+                    <th>
+                      DETAILS
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+
+                <tbody id="headersBody"></tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+
+          <!-- ================================================== -->
+          <!-- REDIRECTS -->
+          <!-- ================================================== -->
+
+          <div class="card full-width">
+
+            <h3>
+              REDIRECT_CHAIN
+            </h3>
+
+
+            <div id="redirectsList"></div>
+
+          </div>
+
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <!-- ================================================== -->
+    <!-- FOOTER -->
+    <!-- ================================================== -->
+
+    <footer class="terminal-window">
+
+      <div class="terminal-header">
+
+        <span class="dot red"></span>
+
+        <span class="dot yellow"></span>
+
+        <span class="dot green"></span>
+
+
+        <span class="title">
+          system_info
+        </span>
+
+      </div>
+
+
+      <p>
+
+        POWERED BY
+
+        <a href="https://github.com/ItsWanheda" target="_blank" rel="noopener noreferrer">
+          ItsWanheda
+        </a>
+
+        // SECURE YOUR INFRASTRUCTURE
+
+      </p>
+
+    </footer>
+
+
+  </div>
+
+
+  <!-- ================================================== -->
+  <!-- JAVASCRIPT -->
+  <!-- ================================================== -->
+
+  <script src="../static/app.js"></script>
+
+</body>
+
 </html>

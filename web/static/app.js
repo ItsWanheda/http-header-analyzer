@@ -1,449 +1,1733 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // Initialize Matrix Background
-  initMatrix();
+"use strict";
 
-  // Initialize Eye Tracking
-  initEyeTracking();
+/*
+ * HTTP Header Analyzer
+ * Frontend application
+ *
+ * Supports:
+ * - Security headers
+ * - CSP Visualizer
+ * - Security score / A+ → F
+ * - TLS information
+ * - Certificate Analyzer
+ * - Robots.txt Analyzer
+ * - Issues / recommendations
+ * - JSON export
+ * - Copy JSON
+ */
 
-  // Initialize Form
-  initForm();
-
-  // Initialize Theme Toggle
-  initThemeToggle();
-
-  // Initialize Copy Button
-  initCopyButton();
-
-  function initHeaderFilter() {
-    const filterInput = document.getElementById("headerFilter");
-    filterInput.addEventListener("input", (e) => {
-      const term = e.target.value.toLowerCase();
-      const rows = document.querySelectorAll("#headersBody tr");
-      rows.forEach((row) => {
-        const name = row.cells[0].textContent.toLowerCase();
-        row.style.display = name.includes(term) ? "" : "none";
-      });
-    });
-  }
-});
-
-function initMatrix() {
-  const canvas = document.getElementById("matrix");
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const katakana =
-    "アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン";
-  const latin = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const nums = "0123456789";
-  const alphabet = katakana + latin + nums;
-
-  const fontSize = 16;
-  const columns = canvas.width / fontSize;
-
-  const rainDrops = [];
-
-  for (let x = 0; x < columns; x++) {
-    rainDrops[x] = 1;
-  }
-
-  const draw = () => {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#0F0";
-    ctx.font = fontSize + "px monospace";
-
-    for (let i = 0; i < rainDrops.length; i++) {
-      const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-      ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-
-      if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-        rainDrops[i] = 0;
-      }
-      rainDrops[i]++;
-    }
-  };
-
-  setInterval(draw, 30);
-
-  window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  });
-}
-
-function initEyeTracking() {
-  const eyeContainer = document.querySelector(".eye-container");
-  const pupil = document.querySelector(".pupil");
-
-  document.addEventListener("mousemove", (e) => {
-    const eyeRect = eyeContainer.getBoundingClientRect();
-    const eyeCenterX = eyeRect.left + eyeRect.width / 2;
-    const eyeCenterY = eyeRect.top + eyeRect.height / 2;
-
-    const angle = Math.atan2(e.clientY - eyeCenterY, e.clientX - eyeCenterX);
-    const distance = Math.min(
-      Math.hypot(e.clientX - eyeCenterX, e.clientY - eyeCenterY) / 10,
-      15,
-    );
-
-    const pupilX = Math.cos(angle) * distance;
-    const pupilY = Math.sin(angle) * distance;
-
-    pupil.style.transform = `translate(calc(-50% + ${pupilX}px), calc(-50% + ${pupilY}px))`;
-  });
-}
-
-function initThemeToggle() {
-  const toggle = document.getElementById("themeToggle");
-  const html = document.documentElement;
-  const icon = toggle.querySelector("i");
-
-  // Check local storage for theme preference
-  const savedTheme = localStorage.getItem("theme") || "dark";
-  html.setAttribute("data-theme", savedTheme);
-  updateIcon(savedTheme);
-
-  toggle.addEventListener("click", () => {
-    const currentTheme = html.getAttribute("data-theme");
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
-
-    html.setAttribute("data-theme", newTheme);
-    localStorage.setItem("theme", newTheme);
-    updateIcon(newTheme);
-  });
-
-  function updateIcon(theme) {
-    if (theme === "dark") {
-      icon.className = "fas fa-sun";
-    } else {
-      icon.className = "fas fa-moon";
-    }
-  }
-}
-
-lastResult = result;
-
-// In initCopyButton:
-function initCopyButton() {
-    const copyBtn = document.getElementById('copyBtn');
-    
-    copyBtn.addEventListener('click', () => {
-        if (!lastResult) {
-            showToast('No data to copy. Run a scan first.', 'error');
-            return;
-        }
-        
-        // Create a formatted JSON string
-        const jsonStr = JSON.stringify(lastResult, null, 2);
-        
-        navigator.clipboard.writeText(jsonStr).then(() => {
-            showToast('JSON report copied to clipboard!', 'success');
-        }).catch(err => {
-            showToast('Failed to copy: ' + err.message, 'error');
-        });
-    });
-}
-
-// Add these variables at the top of the file or inside initForm
 let lastResult = null;
 
-function initForm() {
-    const form = document.getElementById('analyzeForm');
-    const urlInput = document.getElementById('urlInput');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const resultsSection = document.getElementById('resultsSection');
-    const preloader = document.getElementById('preloader');
-    const statusElement = document.getElementById('status');
-    const scannerBar = document.querySelector('.scanner'); // The moving bar
-    const loadingText = document.querySelector('.loading-text'); // The text
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const url = urlInput.value.trim();
-        if (!url) return;
+/* =========================================================
+   DOM HELPERS
+   ========================================================= */
 
-        // Reset UI
-        preloader.classList.remove('hidden');
-        resultsSection.style.display = 'none';
-        analyzeBtn.disabled = true;
-        analyzeBtn.querySelector('.btn-text').textContent = 'SCANNING...';
-        
-        // Helper to update status
-        const updateStatus = (step) => {
-            loadingText.textContent = step;
-            // Animate the scanner bar width to simulate progress
-            scannerBar.style.width = '50%'; 
-        };
-
-        try {
-            updateStatus('INITIATING CONNECTION...');
-            await new Promise(r => setTimeout(r, 500)); // Simulate slight delay for UX feel
-
-            updateStatus('FETCHING HEADERS...');
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url }),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Analysis failed');
-            }
-
-            updateStatus('ANALYZING TLS & SCORE...');
-            const result = await response.json();
-            
-            // Store for export
-            lastResult = result;
-
-            updateStatus('RENDERING REPORT...');
-            await new Promise(r => setTimeout(r, 300)); // Small delay for visual effect
-
-            displayResults(result);
-            resultsSection.style.display = 'block';
-            resultsSection.scrollIntoView({ behavior: 'smooth' });
-            
-            statusElement.textContent = 'SCAN COMPLETE';
-            statusElement.style.color = 'var(--primary-green)';
-            showToast('Analysis complete!', 'success');
-
-        } catch (error) {
-            statusElement.textContent = 'SCAN FAILED';
-            statusElement.style.color = 'var(--primary-red)';
-            showToast(`Error: ${error.message}`, 'error');
-        } finally {
-            preloader.classList.add('hidden');
-            analyzeBtn.disabled = false;
-            analyzeBtn.querySelector('.btn-text').textContent = 'INITIATE_SCAN';
-            loadingText.textContent = 'ANALYZING TARGET...'; // Reset text
-            scannerBar.style.width = '200px'; // Reset bar
-        }
-    });
+function $(id) {
+    return document.getElementById(id);
 }
+
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function showElement(element) {
+    if (!element) return;
+
+    element.style.display = "";
+    element.hidden = false;
+}
+
+
+function hideElement(element) {
+    if (!element) return;
+
+    element.hidden = true;
+}
+
+
+function setText(id, value) {
+    const element = $(id);
+
+    if (!element) return;
+
+    element.textContent =
+        value === null ||
+        value === undefined ||
+        value === ""
+            ? "—"
+            : String(value);
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+function showToast(message, type = "info") {
+    let toast = $("toast");
+
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toast";
+        toast.className = "toast";
+
+        document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+
+    toast.className =
+        `toast toast-${type}`;
+
+    toast.classList.add("show");
+
+    clearTimeout(
+        window.__toastTimer
+    );
+
+    window.__toastTimer =
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 3000);
+}
+
+
+/* =========================================================
+   API
+   ========================================================= */
+
+async function analyzeTarget(target) {
+    const response =
+        await fetch("/api/analyze", {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+                url: target
+            })
+        });
+
+    let data;
+
+    try {
+        data = await response.json();
+    } catch (error) {
+        throw new Error(
+            "Server returned invalid JSON."
+        );
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data?.error ||
+            data?.message ||
+            `Request failed (${response.status})`
+        );
+    }
+
+    return data;
+}
+
+
+/* =========================================================
+   MAIN SCAN
+   ========================================================= */
+
+async function runScan() {
+    const input =
+        $("urlInput") ||
+        $("url") ||
+        $("targetUrl");
+
+    if (!input) {
+        showToast(
+            "URL input not found.",
+            "error"
+        );
+
+        return;
+    }
+
+    let target =
+        input.value.trim();
+
+    if (!target) {
+        showToast(
+            "Enter a URL first.",
+            "error"
+        );
+
+        input.focus();
+
+        return;
+    }
+
+    if (
+        !target.startsWith("http://") &&
+        !target.startsWith("https://")
+    ) {
+        target =
+            "https://" + target;
+    }
+
+    const scanButton =
+        $("scanBtn") ||
+        $("analyzeBtn") ||
+        $("scanButton");
+
+    const originalText =
+        scanButton
+            ? scanButton.innerHTML
+            : "";
+
+    try {
+        if (scanButton) {
+            scanButton.disabled = true;
+
+            scanButton.innerHTML =
+                `
+                <i class="fas fa-spinner fa-spin"></i>
+                SCANNING...
+                `;
+        }
+
+        showToast(
+            "Scanning target...",
+            "info"
+        );
+
+        const result =
+            await analyzeTarget(target);
+
+        lastResult = result;
+
+        displayResults(result);
+
+        showToast(
+            "Scan completed successfully.",
+            "success"
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        showToast(
+            error.message ||
+            "Scan failed.",
+            "error"
+        );
+
+    } finally {
+        if (scanButton) {
+            scanButton.disabled = false;
+
+            scanButton.innerHTML =
+                originalText;
+        }
+    }
+}
+
+
+/* =========================================================
+   DISPLAY RESULTS
+   ========================================================= */
 
 function displayResults(result) {
-  // Display score
-  const scoreValue = document.getElementById("scoreValue");
-  const scoreCircle = document.getElementById("scoreCircle");
-  const ratingBadge = document.getElementById("ratingBadge");
+    if (!result) {
+        return;
+    }
 
-  scoreValue.textContent = result.score;
-  scoreCircle.style.borderColor = getScoreColor(result.score);
-  scoreCircle.style.color = getScoreColor(result.score);
-  scoreCircle.style.boxShadow = `0 0 15px ${getScoreColor(result.score)}`;
+    lastResult = result;
 
-  ratingBadge.textContent = result.rating;
-  ratingBadge.className = "rating-badge bg-" + getScoreClass(result.score);
+    showResultsSection();
 
-  // Display Issues
-  displayIssues(result.issues);
+    displayScore(result);
 
-  // Display TLS info
-  displayTLS(result.tls);
+    displaySecurityHeaders(
+        result.security_headers ||
+        []
+    );
 
-  // Display security headers
-  displayHeaders(result.security_headers);
+    displayTLS(
+        result.tls ||
+        {}
+    );
 
-  // Display redirects
-  displayRedirects(result.redirects);
+    displayCertificate(
+        result.certificate ||
+        null
+    );
+
+    displayRobots(
+        result.robots ||
+        null
+    );
+
+    displayRedirects(
+        result.redirects ||
+        []
+    );
+
+    displayIssues(
+        result.issues ||
+        []
+    );
+
+    displayCSP(
+        result.security_headers ||
+        []
+    );
+
+    updateJSONPreview(
+        result
+    );
 }
 
-// Display Issues
-function displayIssues(issues) {
-  const issuesCard = document.getElementById("issuesCard");
-  const issuesList = document.getElementById("issuesList");
 
-  if (!issues || issues.length === 0) {
-    issuesCard.style.display = "none";
-    return;
-  }
+/* =========================================================
+   RESULTS SECTION
+   ========================================================= */
 
-  issuesCard.style.display = "block";
+function showResultsSection() {
+    const candidates = [
+        $("results"),
+        $("resultsSection"),
+        $("report"),
+        $("dashboard"),
+        $("analysisResults")
+    ];
 
-  // Create a table for issues
-  let html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>SEVERITY</th>
-                    <th>HEADER</th>
-                    <th>EXPLANATION</th>
-                    <th>REMEDIATION</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    candidates.forEach(
+        element => {
+            if (element) {
+                showElement(element);
+            }
+        }
+    );
+}
 
-  issues.forEach((issue) => {
-    const severityClass = `status-${issue.status === "pass" ? "pass" : "fail"}`;
-    const severityLabel = issue.severity;
 
-    html += `
-            <tr>
-                <td><span class="${severityClass}">${severityLabel}</span></td>
-                <td><code>${escapeHtml(issue.header)}</code></td>
-                <td>${escapeHtml(issue.explanation)}</td>
-                <td class="important-red">${escapeHtml(issue.remediation)}</td>
-            </tr>
+/* =========================================================
+   SCORE / GRADE
+   ========================================================= */
+
+function getRating(score) {
+    score = Number(score);
+
+    if (score >= 97) return "A+";
+    if (score >= 93) return "A";
+    if (score >= 90) return "A-";
+    if (score >= 87) return "B+";
+    if (score >= 83) return "B";
+    if (score >= 80) return "B-";
+    if (score >= 77) return "C+";
+    if (score >= 73) return "C";
+    if (score >= 70) return "C-";
+    if (score >= 60) return "D";
+
+    return "F";
+}
+
+
+function getGradeClass(grade) {
+    if (!grade) {
+        return "grade-f";
+    }
+
+    return (
+        "grade-" +
+        grade
+            .toLowerCase()
+            .replace("+", "plus")
+            .replace("-", "minus")
+    );
+}
+
+
+function displayScore(result) {
+    const score =
+        Number(result.score || 0);
+
+    const rating =
+        result.rating ||
+        getRating(score);
+
+    setText(
+        "scoreValue",
+        score
+    );
+
+    setText(
+        "ratingValue",
+        rating
+    );
+
+    setText(
+        "securityScore",
+        score
+    );
+
+    setText(
+        "securityRating",
+        rating
+    );
+
+    setText(
+        "gradeValue",
+        rating
+    );
+
+    const scoreElements = [
+        $("scoreValue"),
+        $("securityScore"),
+        $("score")
+    ];
+
+    scoreElements.forEach(
+        element => {
+            if (!element) return;
+
+            element.textContent =
+                score;
+        }
+    );
+
+    const ratingElements = [
+        $("ratingValue"),
+        $("securityRating"),
+        $("gradeValue"),
+        $("rating")
+    ];
+
+    ratingElements.forEach(
+        element => {
+            if (!element) return;
+
+            element.textContent =
+                rating;
+
+            element.classList.remove(
+                "grade-a-plus",
+                "grade-a",
+                "grade-a-minus",
+                "grade-b-plus",
+                "grade-b",
+                "grade-b-minus",
+                "grade-c-plus",
+                "grade-c",
+                "grade-c-minus",
+                "grade-d",
+                "grade-f"
+            );
+
+            element.classList.add(
+                getGradeClass(rating)
+            );
+        }
+    );
+
+    const progress =
+        $("scoreProgress") ||
+        $("scoreBar");
+
+    if (progress) {
+        if (
+            progress.tagName === "PROGRESS"
+        ) {
+            progress.max = 100;
+            progress.value = score;
+        } else {
+            progress.style.width =
+                `${score}%`;
+        }
+    }
+}
+
+
+/* =========================================================
+   SECURITY HEADERS
+   ========================================================= */
+
+function displaySecurityHeaders(headers) {
+    const container =
+        $("securityHeaders") ||
+        $("headersList") ||
+        $("securityHeaderList");
+
+    if (!container) {
+        return;
+    }
+
+    if (!headers.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                No security headers analyzed.
+            </div>
         `;
-  });
 
-  html += `</tbody></table>`;
-  issuesList.innerHTML = html;
+        return;
+    }
+
+    container.innerHTML =
+        headers.map(header => {
+
+            const status =
+                String(
+                    header.status ||
+                    "unknown"
+                ).toLowerCase();
+
+            const statusClass =
+                status === "pass"
+                    ? "status-pass"
+                    : status === "warn"
+                        ? "status-warn"
+                        : "status-fail";
+
+            const icon =
+                status === "pass"
+                    ? "fa-check"
+                    : status === "warn"
+                        ? "fa-triangle-exclamation"
+                        : "fa-xmark";
+
+            return `
+                <div class="security-header-item ${statusClass}">
+
+                    <div class="security-header-main">
+
+                        <div class="security-header-name">
+                            ${escapeHtml(
+                                header.name
+                            )}
+                        </div>
+
+                        <div class="security-header-status">
+                            <i class="fas ${icon}"></i>
+                            ${escapeHtml(
+                                status.toUpperCase()
+                            )}
+                        </div>
+
+                    </div>
+
+                    <div class="security-header-value">
+                        ${escapeHtml(
+                            header.value || "Not present"
+                        )}
+                    </div>
+
+                    ${
+                        header.message
+                            ? `
+                                <div class="security-header-message">
+                                    ${escapeHtml(
+                                        header.message
+                                    )}
+                                </div>
+                              `
+                            : ""
+                    }
+
+                </div>
+            `;
+        }).join("");
 }
+
+
+/* =========================================================
+   TLS
+   ========================================================= */
 
 function displayTLS(tls) {
-  const tlsDetails = document.getElementById("tlsDetails");
-  const tlsBtn = document.getElementById("tlsDetailsBtn");
+    if (!tls) {
+        return;
+    }
 
-  if (!tls) {
-    tlsDetails.innerHTML = "<p>NO TLS DATA AVAILABLE</p>";
-    tlsBtn.disabled = true;
-    return;
-  }
+    setText(
+        "tlsVersion",
+        tls.version
+    );
 
-  // Enable the button
-  tlsBtn.disabled = false;
-  tlsBtn.onclick = () => openTlsModal(tls);
+    setText(
+        "cipherSuite",
+        tls.cipher_suite
+    );
 
-  const versionClass = getTLSVersionClass(tls.version);
-  const validClass = tls.valid ? "status-pass" : "status-fail";
-  const weakCipher = isWeakCipher(tls.cipher_suite);
+    setText(
+        "tlsCertificate",
+        tls.certificate
+    );
 
-  tlsDetails.innerHTML = `
-        <div class="tls-detail">
-            <dt>TLS VERSION</dt>
-            <dd class="${versionClass}">${tls.version || "N/A"}</dd>
+    setText(
+        "tlsSubject",
+        tls.subject
+    );
+
+    setText(
+        "tlsIssuer",
+        tls.issuer
+    );
+
+    setText(
+        "tlsExpires",
+        tls.expires_at
+    );
+
+    const valid =
+        $("tlsValid");
+
+    if (valid) {
+        valid.textContent =
+            tls.valid
+                ? "VALID"
+                : "INVALID";
+
+        valid.classList.toggle(
+            "status-pass",
+            Boolean(tls.valid)
+        );
+
+        valid.classList.toggle(
+            "status-fail",
+            !tls.valid
+        );
+    }
+}
+
+
+/* =========================================================
+   CERTIFICATE ANALYZER
+   ========================================================= */
+
+function displayCertificate(cert) {
+    const container =
+        $("certificateDetails");
+
+    if (!container) {
+        return;
+    }
+
+    if (
+        !cert ||
+        !cert.present
+    ) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-certificate"></i>
+                <span>
+                    No certificate information available.
+                </span>
+            </div>
+        `;
+
+        return;
+    }
+
+    const valid =
+        Boolean(cert.valid);
+
+    const matches =
+        Boolean(cert.matches_target);
+
+    const certificateOK =
+        valid && matches;
+
+    const days =
+        Number(
+            cert.days_remaining
+        );
+
+    let expiryClass =
+        "status-pass";
+
+    if (days <= 30) {
+        expiryClass =
+            "status-warn";
+    }
+
+    if (days <= 0) {
+        expiryClass =
+            "status-fail";
+    }
+
+    container.innerHTML = `
+        <div class="certificate-grid">
+
+            <div class="tls-detail">
+
+                <dt>STATUS</dt>
+
+                <dd class="${
+                    certificateOK
+                        ? "status-pass"
+                        : "status-fail"
+                }">
+
+                    <i class="fas ${
+                        certificateOK
+                            ? "fa-check"
+                            : "fa-xmark"
+                    }"></i>
+
+                    ${
+                        certificateOK
+                            ? "VALID"
+                            : "INVALID"
+                    }
+
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>SUBJECT</dt>
+
+                <dd>
+                    ${escapeHtml(
+                        cert.subject
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>ISSUER</dt>
+
+                <dd>
+                    ${escapeHtml(
+                        cert.issuer
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>EXPIRES</dt>
+
+                <dd>
+                    ${escapeHtml(
+                        cert.not_after
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>DAYS REMAINING</dt>
+
+                <dd class="${expiryClass}">
+                    ${Number.isFinite(days)
+                        ? days
+                        : "—"}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>HOSTNAME MATCH</dt>
+
+                <dd class="${
+                    matches
+                        ? "status-pass"
+                        : "status-fail"
+                }">
+
+                    ${
+                        matches
+                            ? "YES"
+                            : "NO"
+                    }
+
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>SIGNATURE</dt>
+
+                <dd>
+                    ${escapeHtml(
+                        cert.signature_algorithm
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>PUBLIC KEY</dt>
+
+                <dd>
+                    ${escapeHtml(
+                        cert.public_key
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>SERIAL NUMBER</dt>
+
+                <dd class="break-word">
+                    ${escapeHtml(
+                        cert.serial_number
+                    )}
+                </dd>
+
+            </div>
+
+
+            <div class="tls-detail">
+
+                <dt>WILDCARD</dt>
+
+                <dd>
+                    ${
+                        cert.wildcard
+                            ? "YES"
+                            : "NO"
+                    }
+                </dd>
+
+            </div>
+
         </div>
-        <div class="tls-detail">
-            <dt>CIPHER SUITE</dt>
-            <dd class="${weakCipher ? "important-red" : ""}">${tls.cipher_suite || "N/A"}</dd>
+
+        ${
+            Array.isArray(
+                cert.dns_names
+            ) &&
+            cert.dns_names.length
+                ? `
+                    <div class="certificate-san">
+
+                        <strong>
+                            SAN / DNS NAMES
+                        </strong>
+
+                        <div class="tag-list">
+
+                            ${cert.dns_names
+                                .map(
+                                    name => `
+                                        <span class="tag">
+                                            ${escapeHtml(name)}
+                                        </span>
+                                    `
+                                )
+                                .join("")}
+
+                        </div>
+
+                    </div>
+                  `
+                : ""
+        }
+    `;
+}
+
+
+/* =========================================================
+   ROBOTS.TXT ANALYZER
+   ========================================================= */
+
+function displayRobots(robots) {
+    const container =
+        $("robotsDetails");
+
+    if (!container) {
+        return;
+    }
+
+    if (
+        !robots ||
+        !robots.found
+    ) {
+        container.innerHTML = `
+            <div class="empty-state">
+
+                <i class="fas fa-robot"></i>
+
+                <span>
+                    robots.txt was not found.
+                </span>
+
+            </div>
+        `;
+
+        return;
+    }
+
+    const disallowed =
+        Array.isArray(
+            robots.disallowed
+        )
+            ? robots.disallowed
+            : [];
+
+    const allowed =
+        Array.isArray(
+            robots.allowed
+        )
+            ? robots.allowed
+            : [];
+
+    const sensitive =
+        Array.isArray(
+            robots.sensitive_paths
+        )
+            ? robots.sensitive_paths
+            : [];
+
+    const sitemaps =
+        Array.isArray(
+            robots.sitemaps
+        )
+            ? robots.sitemaps
+            : [];
+
+    container.innerHTML = `
+        <div class="robots-summary">
+
+            <div class="csp-metric">
+
+                <strong>
+                    ${disallowed.length}
+                </strong>
+
+                <span>
+                    DISALLOWED
+                </span>
+
+            </div>
+
+
+            <div class="csp-metric">
+
+                <strong>
+                    ${allowed.length}
+                </strong>
+
+                <span>
+                    ALLOWED
+                </span>
+
+            </div>
+
+
+            <div class="csp-metric">
+
+                <strong>
+                    ${sitemaps.length}
+                </strong>
+
+                <span>
+                    SITEMAPS
+                </span>
+
+            </div>
+
+
+            <div class="csp-metric ${
+                sensitive.length
+                    ? "warn"
+                    : "pass"
+            }">
+
+                <strong>
+                    ${sensitive.length}
+                </strong>
+
+                <span>
+                    INTERESTING PATHS
+                </span>
+
+            </div>
+
         </div>
-        <div class="tls-detail">
-            <dt>CERTIFICATE VALID</dt>
-            <dd class="${validClass}">${tls.valid ? "YES" : "NO"}</dd>
+
+
+        ${
+            sensitive.length
+                ? `
+                    <div class="robots-warning">
+
+                        <h4>
+                            <i class="fas fa-triangle-exclamation"></i>
+                            Interesting Disallowed Paths
+                        </h4>
+
+                        <div class="robots-path-list">
+
+                            ${sensitive
+                                .map(
+                                    path => `
+                                        <div class="robots-path">
+
+                                            <i class="fas fa-folder"></i>
+
+                                            <code>
+                                                ${escapeHtml(
+                                                    path
+                                                )}
+                                            </code>
+
+                                        </div>
+                                    `
+                                )
+                                .join("")}
+
+                        </div>
+
+                        <p>
+                            These paths are discoverable through
+                            robots.txt. This does not by itself
+                            indicate a vulnerability.
+                        </p>
+
+                    </div>
+                  `
+                : `
+                    <div class="empty-state">
+
+                        <i class="fas fa-shield-halved"></i>
+
+                        <span>
+                            No obviously interesting paths detected.
+                        </span>
+
+                    </div>
+                  `
+        }
+
+
+        ${
+            disallowed.length
+                ? `
+                    <div class="robots-section">
+
+                        <h4>
+                            Disallowed Paths
+                        </h4>
+
+                        <div class="tag-list">
+
+                            ${disallowed
+                                .map(
+                                    path => `
+                                        <span class="tag">
+                                            ${escapeHtml(
+                                                path
+                                            )}
+                                        </span>
+                                    `
+                                )
+                                .join("")}
+
+                        </div>
+
+                    </div>
+                  `
+                : ""
+        }
+
+
+        ${
+            sitemaps.length
+                ? `
+                    <div class="robots-section">
+
+                        <h4>
+                            Sitemaps
+                        </h4>
+
+                        <div class="robots-sitemaps">
+
+                            ${sitemaps
+                                .map(
+                                    sitemap => `
+                                        <div>
+                                            ${escapeHtml(
+                                                sitemap
+                                            )}
+                                        </div>
+                                    `
+                                )
+                                .join("")}
+
+                        </div>
+
+                    </div>
+                  `
+                : ""
+        }
+    `;
+}
+
+
+/* =========================================================
+   REDIRECTS
+   ========================================================= */
+
+function displayRedirects(redirects) {
+    const container =
+        $("redirectsList") ||
+        $("redirectList");
+
+    if (!container) {
+        return;
+    }
+
+    if (!redirects.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                No redirects detected.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        redirects.map(
+            (redirect, index) => `
+                <div class="redirect-item">
+
+                    <div class="redirect-number">
+                        ${index + 1}
+                    </div>
+
+                    <div class="redirect-content">
+
+                        <div>
+                            HTTP
+                            ${escapeHtml(
+                                redirect.status_code
+                            )}
+                        </div>
+
+                        ${
+                            redirect.location
+                                ? `
+                                    <code>
+                                        ${escapeHtml(
+                                            redirect.location
+                                        )}
+                                    </code>
+                                  `
+                                : ""
+                        }
+
+                    </div>
+
+                </div>
+            `
+        ).join("");
+}
+
+
+/* =========================================================
+   ISSUES
+   ========================================================= */
+
+function displayIssues(issues) {
+    const container =
+        $("issuesList") ||
+        $("findingsList") ||
+        $("recommendationsList");
+
+    if (!container) {
+        return;
+    }
+
+    if (!issues.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+
+                <i class="fas fa-shield-check"></i>
+
+                <span>
+                    No security issues detected.
+                </span>
+
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        issues.map(issue => {
+
+            const severity =
+                String(
+                    issue.severity ||
+                    "Low"
+                ).toLowerCase();
+
+            return `
+                <div class="issue-card severity-${severity}">
+
+                    <div class="issue-header">
+
+                        <strong>
+                            ${escapeHtml(
+                                issue.header
+                            )}
+                        </strong>
+
+                        <span class="severity-badge">
+                            ${escapeHtml(
+                                issue.severity ||
+                                "Low"
+                            )}
+                        </span>
+
+                    </div>
+
+
+                    ${
+                        issue.explanation
+                            ? `
+                                <p>
+                                    ${escapeHtml(
+                                        issue.explanation
+                                    )}
+                                </p>
+                              `
+                            : ""
+                    }
+
+
+                    ${
+                        issue.remediation
+                            ? `
+                                <div class="remediation">
+
+                                    <strong>
+                                        Recommendation:
+                                    </strong>
+
+                                    ${escapeHtml(
+                                        issue.remediation
+                                    )}
+
+                                </div>
+                              `
+                            : ""
+                    }
+
+                </div>
+            `;
+        }).join("");
+}
+
+
+/* =========================================================
+   CSP VISUALIZER
+   ========================================================= */
+
+function findHeader(
+    headers,
+    name
+) {
+    return headers.find(
+        header =>
+            String(
+                header.name || ""
+            ).toLowerCase() ===
+            name.toLowerCase()
+    );
+}
+
+
+function parseCSP(value) {
+    const directives = [];
+
+    if (!value) {
+        return directives;
+    }
+
+    value
+        .split(";")
+        .map(
+            part => part.trim()
+        )
+        .filter(Boolean)
+        .forEach(
+            part => {
+
+                const tokens =
+                    part.split(
+                        /\s+/
+                    );
+
+                const name =
+                    tokens.shift();
+
+                directives.push({
+                    name,
+                    sources: tokens
+                });
+            }
+        );
+
+    return directives;
+}
+
+
+function displayCSP(headers) {
+    const container =
+        $("cspVisualizer") ||
+        $("cspDetails");
+
+    if (!container) {
+        return;
+    }
+
+    const csp =
+        findHeader(
+            headers,
+            "Content-Security-Policy"
+        );
+
+    if (
+        !csp ||
+        !csp.value
+    ) {
+        container.innerHTML = `
+            <div class="empty-state">
+
+                <i class="fas fa-shield-halved"></i>
+
+                <span>
+                    Content-Security-Policy header not found.
+                </span>
+
+            </div>
+        `;
+
+        return;
+    }
+
+    const directives =
+        parseCSP(
+            csp.value
+        );
+
+    if (!directives.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                CSP header is empty or invalid.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="csp-summary">
+
+            <div class="csp-metric">
+
+                <strong>
+                    ${directives.length}
+                </strong>
+
+                <span>
+                    DIRECTIVES
+                </span>
+
+            </div>
+
         </div>
-        <div class="tls-detail">
-            <dt>SUBJECT</dt>
-            <dd>${tls.subject || "N/A"}</dd>
-        </div>
-        <div class="tls-detail">
-            <dt>ISSUER</dt>
-            <dd>${tls.issuer || "N/A"}</dd>
-        </div>
-        <div class="tls-detail">
-            <dt>EXPIRES</dt>
-            <dd>${tls.expires_at || "N/A"}</dd>
+
+
+        <div class="csp-directives">
+
+            ${directives
+                .map(
+                    directive => `
+                        <div class="csp-directive">
+
+                            <div class="csp-directive-name">
+
+                                <i class="fas fa-shield"></i>
+
+                                ${escapeHtml(
+                                    directive.name
+                                )}
+
+                            </div>
+
+                            <div class="csp-sources">
+
+                                ${
+                                    directive.sources.length
+                                        ? directive.sources
+                                            .map(
+                                                source => `
+                                                    <span class="csp-source">
+                                                        ${escapeHtml(
+                                                            source
+                                                        )}
+                                                    </span>
+                                                `
+                                            )
+                                            .join("")
+                                        : `
+                                            <span class="csp-source">
+                                                No sources
+                                            </span>
+                                          `
+                                }
+
+                            </div>
+
+                        </div>
+                    `
+                )
+                .join("")}
+
         </div>
     `;
 }
 
-function displayHeaders(headers) {
-  const headersBody = document.getElementById("headersBody");
 
-  if (!headers || headers.length === 0) {
-    headersBody.innerHTML = '<tr><td colspan="4">NO HEADERS FOUND</td></tr>';
-    return;
-  }
+/* =========================================================
+   JSON PREVIEW
+   ========================================================= */
 
-  headersBody.innerHTML = headers
-    .map((header) => {
-      const statusClass = `status-${header.status}`;
-      const isImportant =
-        header.status === "fail" ||
-        (header.status === "warn" && header.message);
+function updateJSONPreview(result) {
+    const container =
+        $("jsonPreview") ||
+        $("jsonOutput");
 
-      return `
-            <tr>
-                <td><strong>${escapeHtml(header.name)}</strong></td>
-                <td><code>${escapeHtml(header.value) || "MISSING"}</code></td>
-                <td><span class="${statusClass}">${header.status.toUpperCase()}</span></td>
-                <td class="${isImportant ? "important-red" : ""}">${escapeHtml(header.message) || "-"}</td>
-            </tr>
-        `;
-    })
-    .join("");
+    if (!container) {
+        return;
+    }
+
+    const json =
+        JSON.stringify(
+            result,
+            null,
+            2
+        );
+
+    if (
+        container.tagName ===
+        "TEXTAREA"
+    ) {
+        container.value =
+            json;
+
+        return;
+    }
+
+    container.textContent =
+        json;
 }
 
-function displayRedirects(redirects) {
-  const redirectsList = document.getElementById("redirectsList");
 
-  if (!redirects || redirects.length === 0) {
-    redirectsList.innerHTML = "<p>NO REDIRECTS DETECTED</p>";
-    return;
-  }
+/* =========================================================
+   COPY JSON
+   ========================================================= */
 
-  redirectsList.innerHTML = redirects
-    .map(
-      (r, i) => `
-        <div class="redirect-step ${i === redirects.length - 1 ? "final" : ""}">
-            <strong>STEP ${i + 1}:</strong> ${r.status_code} ${r.is_redirect ? "(REDIRECT)" : "(FINAL)"}
-            ${r.location ? `<br><strong>LOCATION:</strong> ${escapeHtml(r.location)}` : ""}
-        </div>
-    `,
-    )
-    .join("");
+async function copyJSON() {
+    if (!lastResult) {
+        showToast(
+            "No scan result available.",
+            "error"
+        );
+
+        return;
+    }
+
+    const json =
+        JSON.stringify(
+            lastResult,
+            null,
+            2
+        );
+
+    try {
+        await navigator.clipboard.writeText(
+            json
+        );
+
+        showToast(
+            "JSON copied to clipboard.",
+            "success"
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        const textarea =
+            document.createElement(
+                "textarea"
+            );
+
+        textarea.value =
+            json;
+
+        document.body.appendChild(
+            textarea
+        );
+
+        textarea.select();
+
+        document.execCommand(
+            "copy"
+        );
+
+        textarea.remove();
+
+        showToast(
+            "JSON copied.",
+            "success"
+        );
+    }
 }
 
-function getScoreColor(score) {
-  if (score >= 85) return "#00ff41";
-  if (score >= 70) return "#f1c40f";
-  return "#ff003c";
+
+/* =========================================================
+   EXPORT JSON
+   ========================================================= */
+
+function exportJSON() {
+    if (!lastResult) {
+        showToast(
+            "No scan result available.",
+            "error"
+        );
+
+        return;
+    }
+
+    const json =
+        JSON.stringify(
+            lastResult,
+            null,
+            2
+        );
+
+    const blob =
+        new Blob(
+            [json],
+            {
+                type:
+                    "application/json"
+            }
+        );
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+    let hostname =
+        "target";
+
+    try {
+        hostname =
+            new URL(
+                lastResult.url
+            ).hostname;
+    } catch {
+        hostname =
+            "target";
+    }
+
+    hostname =
+        hostname.replace(
+            /[^a-z0-9.-]/gi,
+            "_"
+        );
+
+    const date =
+        new Date()
+            .toISOString()
+            .slice(
+                0,
+                10
+            );
+
+    const filename =
+        `security-report-${hostname}-${date}.json`;
+
+    const link =
+        document.createElement(
+            "a"
+        );
+
+    link.href =
+        url;
+
+    link.download =
+        filename;
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(
+        url
+    );
+
+    showToast(
+        "JSON report exported.",
+        "success"
+    );
 }
 
-function getScoreClass(score) {
-  if (score >= 85) return "pass";
-  if (score >= 70) return "warn";
-  return "fail";
+
+/* =========================================================
+   DOWNLOAD JSON ALIAS
+   ========================================================= */
+
+function downloadJSON() {
+    exportJSON();
 }
 
-function getTLSVersionClass(version) {
-  if (!version) return "";
-  if (version.includes("TLS 1.3")) return "status-pass";
-  if (version.includes("TLS 1.2")) return "status-pass";
-  if (version.includes("TLS 1.1")) return "status-warn";
-  if (version.includes("TLS 1.0")) return "status-fail";
-  return "";
+
+/* =========================================================
+   EVENT LISTENERS
+   ========================================================= */
+
+function initEventListeners() {
+
+    const scanButtons = [
+        $("scanBtn"),
+        $("analyzeBtn"),
+        $("scanButton")
+    ].filter(Boolean);
+
+    scanButtons.forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                runScan
+            );
+
+        }
+    );
+
+
+    const input =
+        $("urlInput") ||
+        $("url") ||
+        $("targetUrl");
+
+    if (input) {
+
+        input.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.preventDefault();
+
+                    runScan();
+                }
+
+            }
+        );
+
+    }
+
+
+    const copyButtons = [
+        $("copyBtn"),
+        $("copyJsonBtn"),
+        $("copyJSON")
+    ].filter(Boolean);
+
+    copyButtons.forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                copyJSON
+            );
+
+        }
+    );
+
+
+    const exportButtons = [
+        $("exportJsonBtn"),
+        $("exportJSON"),
+        $("downloadJsonBtn"),
+        $("downloadJSON")
+    ].filter(Boolean);
+
+    exportButtons.forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                exportJSON
+            );
+
+        }
+    );
 }
 
-function isWeakCipher(cipher) {
-  if (!cipher) return false;
-  const weak = ["RC4", "DES", "3DES", "NULL", "EXPORT", "anon"];
-  return weak.some((w) => cipher.toUpperCase().includes(w));
-}
 
-function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
+/* =========================================================
+   INITIALIZATION
+   ========================================================= */
 
-// Toast Notification Function
-function showToast(message, type = "info") {
-  const container = document.getElementById("toast-container");
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-  let icon = "fa-info-circle";
-  if (type === "error") icon = "fa-exclamation-circle";
-  if (type === "success") icon = "fa-check-circle";
+        initEventListeners();
 
-  toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
+        console.log(
+            "HTTP Header Analyzer initialized."
+        );
 
-  container.appendChild(toast);
-
-  // Remove toast after 3 seconds
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    setTimeout(() => {
-      toast.remove();
-    }, 300);
-  }, 3000);
-}
+    }
+);
