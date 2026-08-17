@@ -3,6 +3,7 @@ package analyzer
 import (
     "context"
     "fmt"
+    "io"
     "net/http"
     "strings"
     "time"
@@ -71,13 +72,28 @@ func (a *Analyzer) AnalyzeWithContext(
 
 	defer resp.Body.Close()
 
+	// Read a limited response body for technology/error detection.
+    limitedReader :=
+	    io.LimitReader(
+		    resp.Body,
+		    2*1024*1024,
+	    )
+
+    bodyBytes, _ :=
+    	io.ReadAll(
+		    limitedReader,
+	    )
+
+body := string(bodyBytes)
+
 	result := &models.AnalysisResult{
 		URL:       targetURL,
 		Timestamp: time.Now(),
 	}
 
-
-	// Security headers
+	// --------------------------------------------------------
+	// Existing analysis
+	// --------------------------------------------------------
 
 	result.SecurityHeaders,
 		result.Issues =
@@ -85,51 +101,73 @@ func (a *Analyzer) AnalyzeWithContext(
 			resp.Header,
 		)
 
-
-	// TLS
-
 	result.TLS =
 		analyzeTLS(resp)
-
-
-	// Certificate
-
-	if resp.TLS != nil &&
-		len(resp.TLS.PeerCertificates) > 0 {
-
-		result.Certificate =
-			analyzeCertificate(
-				targetURL,
-				resp.TLS.PeerCertificates[0],
-			)
-
-	} else {
-
-		result.Certificate =
-			models.CertificateInfo{
-				Present: false,
-				Valid:   false,
-			}
-	}
-
-
-	// Redirects
 
 	result.Redirects =
 		a.analyzeRedirects(targetURL)
 
+	// --------------------------------------------------------
+	// NEW: HSTS
+	// --------------------------------------------------------
 
-	// Robots.txt
+	result.HSTS =
+		analyzeHSTS(
+			resp.Header,
+		)
 
-	result.Robots =
-		analyzeRobots(
+	// --------------------------------------------------------
+	// NEW: security.txt
+	// --------------------------------------------------------
+
+	result.SecurityTxt =
+		a.analyzeSecurityTxt(
 			ctx,
-			a.client,
 			targetURL,
 		)
 
+	// --------------------------------------------------------
+	// NEW: Technology Detection
+	// --------------------------------------------------------
 
-	// Score
+	result.Technologies =
+		detectTechnologies(
+			resp.Header,
+			body,
+		)
+
+	// --------------------------------------------------------
+	// NEW: Information Disclosure
+	// --------------------------------------------------------
+
+	result.InformationLeaks =
+		analyzeInformationDisclosure(
+			resp.Header,
+			body,
+		)
+
+	// --------------------------------------------------------
+	// NEW: HTTP Methods
+	// --------------------------------------------------------
+
+	result.HTTPMethods =
+		a.analyzeHTTPMethods(
+			ctx,
+			targetURL,
+		)
+
+	// --------------------------------------------------------
+	// NEW: CORS
+	// --------------------------------------------------------
+
+	result.CORS =
+		analyzeCORS(
+			resp.Header,
+		)
+
+	// --------------------------------------------------------
+	// Existing score
+	// --------------------------------------------------------
 
 	result.Score =
 		calculateScore(
@@ -138,14 +176,10 @@ func (a *Analyzer) AnalyzeWithContext(
 			result.Redirects,
 		)
 
-
-	// Grade
-
 	result.Rating =
 		calculateRating(
 			result.Score,
 		)
-
 
 	return result, nil
 }
