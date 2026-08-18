@@ -1,12 +1,10 @@
 package api
 import (
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"net/http"
-	"strings"
-
-	"github.com/zharfatech/http-header-analyzer/internal/analyzer"
+    "encoding/json"
+    "fmt"
+    "html/template"
+    "net/http"
+    "strings"
 )
 
 const reportTemplate = `
@@ -602,4 +600,8 @@ func (h *Handler) HandleReport(
 			http.StatusInternalServerError,
 		)
 	}
+}
+
+func readJSON(r *http.Request, v interface{}) error {
+    return json.NewDecoder(r.Body).Decode(v)
 }
