@@ -302,7 +302,7 @@ Planned Features
 * [x] JSON reports
 * [x] CSV reports
 * [x] PDF reports
-* [x]CSP Visualizer
+* [x] CSP Visualizer
 * Historical Tracking
 * Compare scan results over time
 * Detect security regressions
@@ -386,6 +386,7 @@ On Windows:
 ---
 
 ## 📂 Project Structure
+```text
 http-header-analyzer/
 │
 ├── cmd/
@@ -429,6 +430,7 @@ http-header-analyzer/
 ├── go.sum
 ├── LICENSE
 └── README.md
+```
 
 ---
 
