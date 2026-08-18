@@ -299,22 +299,22 @@ Response
 
 ## 🗺️ Roadmap
 Planned Features
+* [x] JSON reports
+* [x] CSV reports
+* [x] PDF reports
+* [x]CSP Visualizer
 * Historical Tracking
-* *Compare scan results over time
-* *Detect security regressions
-* *Track score changes
+* Compare scan results over time
+* Detect security regressions
+* Track score changes
 * Batch Scanner
-* *Analyze multiple URLs
-* *Analyze subdomains
-* *Process URL lists
-* CSP Visualizer
-* *Visualize CSP directives
-* *Identify policy weaknesses
-* *Present CSP attack surface information
+* Analyze multiple URLs
+* Analyze subdomains
+* Process URL lists
+* Visualize CSP directives
+* Identify policy weaknesses
+* Present CSP attack surface information
 * Export Options
-* *JSON reports
-* *CSV reports
-* *PDF reports
 
 ---
 
