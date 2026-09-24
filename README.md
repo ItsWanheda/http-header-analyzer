@@ -132,7 +132,20 @@ Save JSON directly to a file:
 Control the maximum scan duration:
 
 ```bash
-./http-header-analyzer scan https://example.com --json --timeout 30s
+./http-header-analyzer scan --json --timeout 30s https://example.com
+```
+
+Use quality gates in CI/CD:
+
+```bash
+# Fail when the score is below 80
+./http-header-analyzer scan --min-score 80 https://example.com
+
+# Fail when a High-or-worse issue exists
+./http-header-analyzer scan --fail-on high https://example.com
+
+# Combine both checks
+./http-header-analyzer scan --json --min-score 80 --fail-on high https://example.com
 ```
 
 The CLI exits with a non-zero status when a scan cannot be completed, making it suitable for scripts and CI pipelines.
