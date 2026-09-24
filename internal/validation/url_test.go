@@ -20,6 +20,8 @@ func TestValidateURL(t *testing.T) {
 		{name: "rejects private IPv4", input: "http://192.168.1.10", wantErr: true},
 		{name: "rejects private IPv6", input: "http://[fd00::1]", wantErr: true},
 		{name: "rejects link-local", input: "http://169.254.169.254", wantErr: true},
+		{name: "rejects userinfo", input: "https://user:pass@example.com", wantErr: true},
+		{name: "rejects fragment", input: "https://example.com/#section", wantErr: true},
 	}
 
 	for _, tt := range tests {
