@@ -1,112 +1,97 @@
 package analyzer
 
 import (
-    "strings"
-    "github.com/zharfatech/http-header-analyzer/internal/models"
+	"strings"
+
+	"github.com/zharfatech/http-header-analyzer/internal/models"
 )
 
-// RuleRegistry holds all defined security rules
 var RuleRegistry = []models.SecurityRule{
-    // HSTS
-    {
-        Name:         "Strict-Transport-Security",
-        HeaderName:   "Strict-Transport-Security",
-        Severity:     models.SeverityCritical,
-        Required:     true,
-        Explanation:  "HSTS ensures browsers only connect via HTTPS.",
-        Remediation:  "Add 'Strict-Transport-Security: max-age=31536000; includeSubDomains' header.",
-        CheckLogic: func(v string) (bool, string) {
-            if !strings.Contains(v, "max-age=") {
-                return false, "Missing max-age directive"
-            }
-            if !strings.Contains(v, "includeSubDomains") {
-                return false, "Missing includeSubDomains directive"
-            }
-            return true, ""
-        },
-    },
-    // CSP
-    {
-        Name:         "Content-Security-Policy",
-        HeaderName:   "Content-Security-Policy",
-        Severity:     models.SeverityHigh,
-        Required:     true,
-        Explanation:  "CSP prevents XSS and data injection attacks.",
-        Remediation:  "Implement a strict CSP with 'default-src 'self''.",
-        CheckLogic: func(v string) (bool, string) {
-            if !strings.Contains(v, "default-src") {
-                return false, "Missing default-src directive"
-            }
-            if strings.Contains(v, "'unsafe-inline'") {
-                return false, "Contains unsafe-inline which is a security risk"
-            }
-            return true, ""
-        },
-    },
-    // X-Content-Type-Options
-    {
-        Name:         "X-Content-Type-Options",
-        HeaderName:   "X-Content-Type-Options",
-        Severity:     models.SeverityMedium,
-        Required:     true,
-        Explanation:  "Prevents MIME-type sniffing.",
-        Remediation:  "Set 'X-Content-Type-Options: nosniff'.",
-        CheckLogic: func(v string) (bool, string) {
-            if !strings.EqualFold(v, "nosniff") {
-                return false, "Value should be 'nosniff'"
-            }
-            return true, ""
-        },
-    },
-    // X-Frame-Options
-    {
-        Name:         "X-Frame-Options",
-        HeaderName:   "X-Frame-Options",
-        Severity:     models.SeverityMedium,
-        Required:     true,
-        Explanation:  "Prevents Clickjacking attacks.",
-        Remediation:  "Set 'X-Frame-Options: DENY' or 'SAMEORIGIN'.",
-        CheckLogic: func(v string) (bool, string) {
-            if !strings.EqualFold(v, "DENY") && !strings.EqualFold(v, "SAMEORIGIN") {
-                return false, "Value should be 'DENY' or 'SAMEORIGIN'"
-            }
-            return true, ""
-        },
-    },
-    // Cookie Analysis (Special Case)
-    {
-        Name:         "Cookie Security",
-        HeaderName:   "Set-Cookie", // We will parse all Set-Cookie headers
-        Severity:     models.SeverityHigh,
-        Required:     false, // Only applies if cookies are set
-        Explanation:  "Cookies should be Secure, HttpOnly, and SameSite.",
-        Remediation:  "Ensure cookies have Secure, HttpOnly, and SameSite=Strict/Lax flags.",
-        CheckLogic:  CheckCookieSecurity,
-    },
+	{
+		Name: "Strict-Transport-Security", HeaderName: "Strict-Transport-Security",
+		Severity: models.SeverityCritical, Required: true,
+		Explanation: "HSTS ensures browsers only connect via HTTPS.",
+		Remediation: "Add Strict-Transport-Security with a long max-age and includeSubDomains.",
+		CheckLogic: func(v string) (bool, string) {
+			lower := strings.ToLower(v)
+			if !strings.Contains(lower, "max-age=") { return false, "Missing max-age directive" }
+			if !strings.Contains(lower, "includesubdomains") { return false, "Missing includeSubDomains directive" }
+			return true, ""
+		},
+	},
+	{
+		Name: "Content-Security-Policy", HeaderName: "Content-Security-Policy",
+		Severity: models.SeverityHigh, Required: true,
+		Explanation: "CSP reduces the impact of XSS and content injection attacks.",
+		Remediation: "Implement a restrictive Content-Security-Policy appropriate for the application.",
+		CheckLogic: func(v string) (bool, string) {
+			lower := strings.ToLower(v)
+			if !strings.Contains(lower, "default-src") { return false, "Missing default-src directive" }
+			if strings.Contains(lower, "'unsafe-inline'") { return false, "Contains unsafe-inline" }
+			return true, ""
+		},
+	},
+	{
+		Name: "X-Content-Type-Options", HeaderName: "X-Content-Type-Options",
+		Severity: models.SeverityMedium, Required: true,
+		Explanation: "Prevents MIME-type sniffing.",
+		Remediation: "Set X-Content-Type-Options: nosniff.",
+		CheckLogic: func(v string) (bool, string) {
+			if !strings.EqualFold(strings.TrimSpace(v), "nosniff") { return false, "Value should be nosniff" }
+			return true, ""
+		},
+	},
+	{
+		Name: "X-Frame-Options", HeaderName: "X-Frame-Options",
+		Severity: models.SeverityMedium, Required: true,
+		Explanation: "Helps prevent clickjacking.",
+		Remediation: "Set X-Frame-Options to DENY or SAMEORIGIN.",
+		CheckLogic: func(v string) (bool, string) {
+			value := strings.ToUpper(strings.TrimSpace(v))
+			if value != "DENY" && value != "SAMEORIGIN" { return false, "Value should be DENY or SAMEORIGIN" }
+			return true, ""
+		},
+	},
+	{
+		Name: "Cookie Security", HeaderName: "Set-Cookie",
+		Severity: models.SeverityHigh, Required: false,
+		Explanation: "Cookies should use Secure, HttpOnly, and SameSite attributes where appropriate.",
+		Remediation: "Add Secure, HttpOnly, and SameSite to sensitive cookies.",
+		CheckLogic: CheckCookieSecurity,
+	},
 }
 
-// CheckCookieSecurity parses Set-Cookie headers and validates flags
 func CheckCookieSecurity(cookieString string) (bool, string) {
-    // Note: In a real multi-header scenario, you might need to iterate over headers.Values()
-    // Here we assume the input is the raw Set-Cookie value or concatenated values.
-    
-    // Split by comma if multiple cookies are sent in one header (rare but possible)
-    // Usually, Set-Cookie headers are separate. We'll treat the input as one cookie string for this example.
-    
-    // Check for Secure
-    if !strings.Contains(strings.ToLower(cookieString), "secure") {
-        return false, "Cookie missing 'Secure' flag"
-    }
-    
-    // Check for HttpOnly
-    if !strings.Contains(strings.ToLower(cookieString), "httponly") {
-        return false, "Cookie missing 'HttpOnly' flag"
-    }
-    
-    // Check for SameSite
-    if !strings.Contains(strings.ToLower(cookieString), "samesite") {
-        return false, "Cookie missing 'SameSite' flag"
-    }
-    
-    return true, ""
+	parts := strings.Split(cookieString, ";")
+	if len(parts) == 0 || !strings.Contains(parts[0], "=") {
+		return false, "Invalid Set-Cookie value"
+	}
+
+	hasSecure, hasHTTPOnly, hasSameSite := false, false, false
+	for _, part := range parts[1:] {
+		attr := strings.TrimSpace(part)
+		lower := strings.ToLower(attr)
+		switch {
+		case lower == "secure":
+			hasSecure = true
+		case lower == "httponly":
+			hasHTTPOnly = true
+		case strings.HasPrefix(lower, "samesite="):
+			value := strings.TrimSpace(strings.TrimPrefix(lower, "samesite="))
+			if value == "strict" || value == "lax" || value == "none" {
+				hasSameSite = true
+			}
+		}
+	}
+
+	switch {
+	case !hasSecure:
+		return false, "Cookie missing Secure flag"
+	case !hasHTTPOnly:
+		return false, "Cookie missing HttpOnly flag"
+	case !hasSameSite:
+		return false, "Cookie missing a valid SameSite attribute"
+	default:
+		return true, ""
+	}
 }
