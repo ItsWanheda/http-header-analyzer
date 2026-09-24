@@ -103,6 +103,40 @@ go run ./cmd/server
 
 Then open <http://localhost:8080>.
 
+### Use the CLI
+
+Build the scanner CLI:
+
+```bash
+go build -o http-header-analyzer ./cmd/http-header-analyzer
+```
+
+Scan a target with human-readable output:
+
+```bash
+./http-header-analyzer scan https://example.com
+```
+
+Return the complete analysis as machine-readable JSON:
+
+```bash
+./http-header-analyzer scan https://example.com --json
+```
+
+Save JSON directly to a file:
+
+```bash
+./http-header-analyzer scan https://example.com --json --output report.json
+```
+
+Control the maximum scan duration:
+
+```bash
+./http-header-analyzer scan https://example.com --json --timeout 30s
+```
+
+The CLI exits with a non-zero status when a scan cannot be completed, making it suitable for scripts and CI pipelines.
+
 ### Build a production binary
 
 ```bash
