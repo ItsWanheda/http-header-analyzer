@@ -556,12 +556,13 @@ func (h *Handler) HandleReport(
 		return
 	}
 
-	result, err :=
-		h.analyzer.Analyze(
-			strings.TrimSpace(
-				request.URL,
-			),
-		)
+	validURL, err := validation.ValidateURL(strings.TrimSpace(request.URL))
+	if err != nil {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.analyzer.AnalyzeWithContext(r.Context(), validURL)
 
 	if err != nil {
 		http.Error(
