@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -15,6 +16,10 @@ import (
 
 const version = "1.0.0"
 
+var analyzeTarget = func(ctx context.Context, target string) (*models.AnalysisResult, error) {
+	return analyzer.NewAnalyzer().AnalyzeWithContext(ctx, target)
+}
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -22,7 +27,7 @@ func main() {
 	}
 }
 
-func run(args []string, stdout, stderr *os.File) error {
+func run(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		printUsage(stdout)
 		return nil
@@ -40,6 +45,8 @@ func run(args []string, stdout, stderr *os.File) error {
 	jsonOutput := fs.Bool("json", false, "output the complete analysis as JSON")
 	outputPath := fs.String("output", "", "write output to a file instead of stdout")
 	timeout := fs.Duration("timeout", 15*time.Second, "maximum time allowed for the scan")
+	minScore := fs.Int("min-score", -1, "fail if the security score is below this value (0-100)")
+	failOn := fs.String("fail-on", "", "fail when an issue at or above this severity exists (critical, high, medium, low)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -49,11 +56,18 @@ func run(args []string, stdout, stderr *os.File) error {
 	if *timeout <= 0 {
 		return fmt.Errorf("timeout must be greater than zero")
 	}
+	if *minScore < -1 || *minScore > 100 {
+		return fmt.Errorf("min-score must be between 0 and 100")
+	}
+	severity, err := parseFailOn(*failOn)
+	if err != nil {
+		return err
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	result, err := analyzer.NewAnalyzer().AnalyzeWithContext(ctx, strings.TrimSpace(fs.Arg(0)))
+	result, err := analyzeTarget(ctx, strings.TrimSpace(fs.Arg(0)))
 	if err != nil {
 		return err
 	}
@@ -73,11 +87,60 @@ func run(args []string, stdout, stderr *os.File) error {
 		if err := os.WriteFile(*outputPath, data, 0o600); err != nil {
 			return fmt.Errorf("write output file: %w", err)
 		}
-		return nil
+	} else if _, err := stdout.Write(data); err != nil {
+		return err
 	}
 
-	_, err = stdout.Write(data)
-	return err
+	if *minScore >= 0 && result.Score < *minScore {
+		return fmt.Errorf("minimum score check failed: score %d is below required %d", result.Score, *minScore)
+	}
+	if severity != "" && hasIssueAtOrAbove(result.Issues, severity) {
+		return fmt.Errorf("severity check failed: found issue at or above %s severity", severity)
+	}
+
+	return nil
+}
+
+func parseFailOn(value string) (models.Severity, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "":
+		return "", nil
+	case "critical":
+		return models.SeverityCritical, nil
+	case "high":
+		return models.SeverityHigh, nil
+	case "medium":
+		return models.SeverityMedium, nil
+	case "low":
+		return models.SeverityLow, nil
+	default:
+		return "", fmt.Errorf("invalid fail-on severity %q; use critical, high, medium, or low", value)
+	}
+}
+
+func hasIssueAtOrAbove(issues []models.Issue, threshold models.Severity) bool {
+	thresholdRank := severityRank(threshold)
+	for _, issue := range issues {
+		if severityRank(issue.Severity) >= thresholdRank {
+			return true
+		}
+	}
+	return false
+}
+
+func severityRank(severity models.Severity) int {
+	switch severity {
+	case models.SeverityCritical:
+		return 4
+	case models.SeverityHigh:
+		return 3
+	case models.SeverityMedium:
+		return 2
+	case models.SeverityLow:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func formatHumanResult(result *models.AnalysisResult) string {
@@ -110,7 +173,7 @@ func formatHumanResult(result *models.AnalysisResult) string {
 	return b.String()
 }
 
-func printUsage(w *os.File) {
+func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "HTTP Header Analyzer CLI")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
@@ -121,4 +184,6 @@ func printUsage(w *os.File) {
 	fmt.Fprintln(w, "  --json             output the complete analysis as JSON")
 	fmt.Fprintln(w, "  --output <file>    write output to a file")
 	fmt.Fprintln(w, "  --timeout <dur>    maximum scan time (default 15s)")
+	fmt.Fprintln(w, "  --min-score <n>    fail if score is below n (0-100)")
+	fmt.Fprintln(w, "  --fail-on <level>  fail on issue severity: critical, high, medium, low")
 }
