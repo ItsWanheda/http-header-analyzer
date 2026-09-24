@@ -44,7 +44,7 @@ func TestCLIQualityGates(t *testing.T) {
 		{"minimum score passes", []string{"scan", "https://example.com", "--min-score", "80"}, testResult(85), false},
 		{"minimum score fails", []string{"scan", "https://example.com", "--min-score", "90"}, testResult(85), true},
 		{"fail-on passes", []string{"scan", "https://example.com", "--fail-on", "high"}, testResult(90, models.SeverityMedium), false},
-		{"fail-on fails", []string{"scan", "https://example.com", "--fail-on", "high"}, testResult(90, models.SeverityHigh), true},
+		{"fail-on fails", []string{"scan", "--fail-on", "high", "https://example.com"}, testResult(90, models.SeverityHigh), true},
 		{"both gates pass", []string{"scan", "https://example.com", "--min-score", "80", "--fail-on", "critical"}, testResult(90, models.SeverityHigh), false},
 		{"both gates fail", []string{"scan", "https://example.com", "--min-score", "95", "--fail-on", "high"}, testResult(90, models.SeverityHigh), true},
 	}
