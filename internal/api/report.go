@@ -5,6 +5,8 @@ import (
     "html/template"
     "net/http"
     "strings"
+
+    "github.com/zharfatech/http-header-analyzer/internal/validation"
 )
 
 const reportTemplate = `
