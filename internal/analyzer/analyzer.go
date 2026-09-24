@@ -1,360 +1,276 @@
 package analyzer
 
 import (
-    "context"
-    "fmt"
-    "io"
-    "net/http"
-    "strings"
-    "time"
+	"context"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
-    "github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/zharfatech/http-header-analyzer/internal/models"
 )
 
 const (
-    defaultTimeout = 10 * time.Second
-    maxRedirects   = 5
+	defaultTimeout = 10 * time.Second
+	maxRedirects   = 5
+	maxBodySize    = 2 * 1024 * 1024
+	userAgent      = "HTTP-Header-Analyzer/1.1"
 )
 
-// Analyzer performs HTTP header analysis
 type Analyzer struct {
-    client *http.Client
+	client *http.Client
 }
 
-// NewAnalyzer creates a new Analyzer instance
 func NewAnalyzer() *Analyzer {
-    return &Analyzer{
-        client: &http.Client{
-            Timeout:   defaultTimeout,
-            CheckRedirect: func(req *http.Request, via []*http.Request) error {
-                if len(via) >= maxRedirects {
-                    return fmt.Errorf("too many redirects (%d)", maxRedirects)
-                }
-                return nil
-            },
-        },
-    }
-}
-
-// Analyze performs a full analysis of the given URL
-func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResult, error) {
-    return a.AnalyzeWithContext(context.Background(), targetURL)
-}
-
-// AnalyzeWithContext performs analysis with a custom context
-func (a *Analyzer) AnalyzeWithContext(
-	ctx context.Context,
-	targetURL string,
-) (*models.AnalysisResult, error) {
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		targetURL,
-		nil,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to create request: %w",
-			err,
-		)
+	return &Analyzer{
+		client: newSafeHTTPClient(),
 	}
+}
+
+func newSafeHTTPClient() *http.Client {
+	dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}
+
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:            safeDialContext(dialer),
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          20,
+		MaxIdleConnsPerHost:   4,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 8 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   defaultTimeout,
+	}
+
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= maxRedirects {
+			return fmt.Errorf("too many redirects (maximum %d)", maxRedirects)
+		}
+		if req.URL == nil || !isSafeRemoteURL(req.URL) {
+			return fmt.Errorf("redirect target is not allowed")
+		}
+		return nil
+	}
+
+	return client
+}
+
+func safeDialContext(dialer *net.Dialer) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid target address: %w", err)
+		}
+
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("DNS lookup failed: %w", err)
+		}
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("host has no IP addresses")
+		}
+
+		for _, ip := range ips {
+			if !isPublicIP(ip.IP) {
+				continue
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))
+		}
+
+		return nil, fmt.Errorf("target resolves only to private or reserved addresses")
+	}
+}
+
+func isPublicIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	return !ip.IsLoopback() &&
+		!ip.IsPrivate() &&
+		!ip.IsLinkLocalUnicast() &&
+		!ip.IsLinkLocalMulticast() &&
+		!ip.IsUnspecified() &&
+		!ip.IsMulticast()
+}
+
+func isSafeRemoteURL(u *url.URL) bool {
+	if u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return false
+	}
+	host := strings.Trim(u.Hostname(), "[]")
+	if strings.EqualFold(host, "localhost") || strings.HasSuffix(strings.ToLower(host), ".localhost") {
+		return false
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return isPublicIP(ip)
+	}
+	return true
+}
+
+func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResult, error) {
+	return a.AnalyzeWithContext(context.Background(), targetURL)
+}
+
+func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*models.AnalysisResult, error) {
+	parsed, err := url.Parse(targetURL)
+	if err != nil || !isSafeRemoteURL(parsed) {
+		return nil, fmt.Errorf("invalid or unsafe target URL")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8")
 
 	resp, err := a.client.Do(req)
-
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to fetch URL: %w",
-			err,
-		)
+		return nil, fmt.Errorf("failed to fetch URL: %w", err)
 	}
-
 	defer resp.Body.Close()
 
-	// Read a limited response body for technology/error detection.
-    limitedReader :=
-	    io.LimitReader(
-		    resp.Body,
-		    2*1024*1024,
-	    )
-
-    bodyBytes, _ :=
-    	io.ReadAll(
-		    limitedReader,
-	    )
-
-body := string(bodyBytes)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
 
 	result := &models.AnalysisResult{
 		URL:       targetURL,
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UTC(),
 	}
 
-	// --------------------------------------------------------
-	// Existing analysis
-	// --------------------------------------------------------
+	result.SecurityHeaders, result.Issues = analyzeSecurityHeadersWithRules(resp.Header)
+	result.TLS = analyzeTLS(resp)
+	result.Redirects = a.analyzeRedirects(targetURL)
+	result.HSTS = analyzeHSTS(resp.Header)
+	result.SecurityTxt = a.analyzeSecurityTxt(ctx, targetURL)
+	result.Technologies = detectTechnologies(resp.Header, string(bodyBytes))
+	result.InformationLeaks = analyzeInformationDisclosure(resp.Header, string(bodyBytes))
+	result.HTTPMethods = a.analyzeHTTPMethods(ctx, targetURL)
+	result.CORS = analyzeCORS(resp.Header)
 
-	result.SecurityHeaders,
-		result.Issues =
-		analyzeSecurityHeadersWithRules(
-			resp.Header,
-		)
-
-	result.TLS =
-		analyzeTLS(resp)
-
-	result.Redirects =
-		a.analyzeRedirects(targetURL)
-
-	// --------------------------------------------------------
-	// NEW: HSTS
-	// --------------------------------------------------------
-
-	result.HSTS =
-		analyzeHSTS(
-			resp.Header,
-		)
-
-	// --------------------------------------------------------
-	// NEW: security.txt
-	// --------------------------------------------------------
-
-	result.SecurityTxt =
-		a.analyzeSecurityTxt(
-			ctx,
-			targetURL,
-		)
-
-	// --------------------------------------------------------
-	// NEW: Technology Detection
-	// --------------------------------------------------------
-
-	result.Technologies =
-		detectTechnologies(
-			resp.Header,
-			body,
-		)
-
-	// --------------------------------------------------------
-	// NEW: Information Disclosure
-	// --------------------------------------------------------
-
-	result.InformationLeaks =
-		analyzeInformationDisclosure(
-			resp.Header,
-			body,
-		)
-
-	// --------------------------------------------------------
-	// NEW: HTTP Methods
-	// --------------------------------------------------------
-
-	result.HTTPMethods =
-		a.analyzeHTTPMethods(
-			ctx,
-			targetURL,
-		)
-
-	// --------------------------------------------------------
-	// NEW: CORS
-	// --------------------------------------------------------
-
-	result.CORS =
-		analyzeCORS(
-			resp.Header,
-		)
-
-	// --------------------------------------------------------
-	// Existing score
-	// --------------------------------------------------------
-
-	result.Score =
-		calculateScore(
-			result.SecurityHeaders,
-			result.TLS,
-			result.Redirects,
-		)
-
-	result.Rating =
-		calculateRating(
-			result.Score,
-		)
+	result.Score = calculateScore(result.SecurityHeaders, result.TLS, result.Redirects)
+	result.Rating = calculateRating(result.Score)
 
 	return result, nil
 }
 
-// analyzeSecurityHeadersWithRules iterates through the RuleRegistry and applies checks
 func analyzeSecurityHeadersWithRules(headers http.Header) ([]models.SecurityHeader, []models.Issue) {
-    var securityHeaders []models.SecurityHeader
-    var issues []models.Issue
+	results := make([]models.SecurityHeader, 0, len(RuleRegistry))
+	issues := make([]models.Issue, 0)
 
-    for _, rule := range RuleRegistry {
-        // Get header value. For Set-Cookie, we might have multiple, so we join them or take the first relevant one.
-        // For simplicity in this engine, we take the first value or join if needed.
-        value := headers.Get(rule.HeaderName)
-        
-        // Special handling for Set-Cookie: check all of them
-        if rule.HeaderName == "Set-Cookie" {
-            cookies := headers.Values("Set-Cookie")
-            // We will check each cookie individually or combine them. 
-            // For this implementation, let's check the first one as a representative, 
-            // or iterate if you want strictness. Let's iterate for thoroughness.
-            allCookiesPass := true
-            var failMsg string
-            
-            for _, cookie := range cookies {
-                pass, msg := rule.CheckLogic(cookie)
-                if !pass {
-                    allCookiesPass = false
-                    failMsg = msg
-                    break // Fail on first bad cookie for simplicity
-                }
-            }
-            
-            // If no cookies found, it's not a fail for optional rules, but maybe a warn?
-            // Let's treat missing cookies as a pass for the rule itself if it's optional, 
-            // or just skip if no cookies are present.
-            if len(cookies) == 0 {
-                // No cookies set, rule doesn't apply or passes
-                securityHeaders = append(securityHeaders, models.SecurityHeader{
-                    Name:    rule.Name,
-                    Value:   "N/A",
-                    Present: false,
-                    Status:  "pass", // Or "warn" if you want to flag lack of cookies
-                    Message: "No cookies set",
-                })
-                continue
-            }
+	for _, rule := range RuleRegistry {
+		if rule.HeaderName == "Set-Cookie" {
+			cookies := headers.Values("Set-Cookie")
+			if len(cookies) == 0 {
+				results = append(results, models.SecurityHeader{
+					Name: rule.Name, Value: "N/A", Present: false, Status: "pass",
+					Message: "No cookies set",
+				})
+				continue
+			}
 
-            status := "pass"
-            message := ""
-            if !allCookiesPass {
-                status = "fail"
-                message = failMsg
-            }
+			status, message := "pass", ""
+			for _, cookie := range cookies {
+				if ok, msg := rule.CheckLogic(cookie); !ok {
+					status, message = "fail", msg
+					break
+				}
+			}
 
-            securityHeaders = append(securityHeaders, models.SecurityHeader{
-                Name:    rule.Name,
-                Value:   cookies[0], // Show first cookie for display
-                Present: true,
-                Status:  status,
-                Message: message,
-            })
+			results = append(results, models.SecurityHeader{
+				Name: rule.Name, Value: cookies[0], Present: true, Status: status, Message: message,
+			})
+			if status != "pass" {
+				issues = append(issues, models.Issue{
+					Header: rule.HeaderName, Status: status, Severity: rule.Severity,
+					Explanation: rule.Explanation, Remediation: rule.Remediation,
+				})
+			}
+			continue
+		}
 
-            // Add to issues if fail or warn
-            if status != "pass" {
-                issues = append(issues, models.Issue{
-                    Header:      rule.HeaderName,
-                    Status:      status,
-                    Severity:    rule.Severity,
-                    Explanation: rule.Explanation,
-                    Remediation: rule.Remediation,
-                })
-            }
-            continue
-        }
+		value := headers.Get(rule.HeaderName)
+		present := value != ""
+		status, message := "pass", ""
 
-        // Standard Header Check
-        present := value != ""
-        status := "pass"
-        message := ""
+		if !present {
+			if rule.Required {
+				status, message = "fail", "Required header is missing"
+			} else {
+				status, message = "warn", "Optional header is missing"
+			}
+		} else if ok, msg := rule.CheckLogic(value); !ok {
+			status, message = "warn", msg
+		}
 
-        if !present {
-            if rule.Required {
-                status = "fail"
-                message = "Required header is missing"
-            } else {
-                status = "warn"
-                message = "Optional header is missing"
-            }
-        } else {
-            // Run the rule's check logic
-            pass, checkMsg := rule.CheckLogic(value)
-            if !pass {
-                status = "warn" // Or "fail" depending on severity
-                message = checkMsg
-            }
-        }
+		results = append(results, models.SecurityHeader{
+			Name: rule.Name, Value: value, Present: present, Status: status, Message: message,
+		})
+		if status != "pass" {
+			issues = append(issues, models.Issue{
+				Header: rule.HeaderName, Status: status, Severity: rule.Severity,
+				Explanation: rule.Explanation, Remediation: rule.Remediation,
+			})
+		}
+	}
 
-        securityHeaders = append(securityHeaders, models.SecurityHeader{
-            Name:    rule.Name,
-            Value:   value,
-            Present: present,
-            Status:  status,
-            Message: message,
-        })
-
-        // Add to issues if not pass
-        if status != "pass" {
-            issues = append(issues, models.Issue{
-                Header:      rule.HeaderName,
-                Status:      status,
-                Severity:    rule.Severity,
-                Explanation: rule.Explanation,
-                Remediation: rule.Remediation,
-            })
-        }
-    }
-
-    return securityHeaders, issues
+	return results, issues
 }
 
-// calculateScore calculates the overall security score
-func calculateScore(headers []models.SecurityHeader, tls models.TLSInfo, redirects []models.RedirectInfo) int {
-    score := 0
-    maxScore := 0
+func calculateScore(headers []models.SecurityHeader, tlsInfo models.TLSInfo, redirects []models.RedirectInfo) int {
+	score, maxScore := 0, 0
 
-    // Security headers scoring (60 points total)
-    for _, h := range headers {
-        if !h.Present && h.Status == "warn" {
-            // Optional headers missing don't deduct, but don't add
-            continue
-        }
-        if !h.Present {
-            continue
-        }
-        maxScore += 10
-        switch h.Status {
-        case "pass":
-            score += 10
-        case "warn":
-            score += 5
-        case "fail":
-            // 0 points
-        }
-    }
+	for _, h := range headers {
+		if !h.Present {
+			continue
+		}
+		maxScore += 10
+		switch h.Status {
+		case "pass":
+			score += 10
+		case "warn":
+			score += 5
+		}
+	}
 
-    // TLS scoring (30 points)
-    maxScore += 30
-    if tls.Valid {
-        score += 15
-    }
-    if tls.Version != "" && (strings.Contains(tls.Version, "TLSv1.2") || strings.Contains(tls.Version, "TLSv1.3")) {
-        score += 10
-    }
-    if !strings.Contains(strings.ToLower(tls.CipherSuite), "rc4") &&
-        !strings.Contains(strings.ToLower(tls.CipherSuite), "des") &&
-        !strings.Contains(strings.ToLower(tls.CipherSuite), "null") {
-        score += 5
-    }
+	maxScore += 30
+	if tlsInfo.Valid {
+		score += 15
+	}
+	if tlsInfo.Version == "TLS 1.2" || tlsInfo.Version == "TLS 1.3" {
+		score += 10
+	}
+	if !isWeakCipher(tlsInfo.CipherSuite) {
+		score += 5
+	}
 
-    // Redirect scoring (10 points)
-    maxScore += 10
-    if len(redirects) == 0 {
-        score += 10
-    } else {
-        score += 5
-    }
+	maxScore += 10
+	if len(redirects) == 0 {
+		score += 10
+	} else {
+		score += 5
+	}
 
-    // Normalize to 0-100
-    if maxScore > 0 {
-        score = (score * 100) / maxScore
-    }
-    return score
+	if maxScore == 0 {
+		return 0
+	}
+	score = score * 100 / maxScore
+	if score > 100 {
+		return 100
+	}
+	return score
 }
 
-// calculateRating converts a score to a letter grade
 func calculateRating(score int) string {
 	switch {
 	case score >= 97:
