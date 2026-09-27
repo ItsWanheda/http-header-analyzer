@@ -330,3 +330,16 @@ If you find the project useful, consider giving it a ⭐ and sharing feedback th
 Made with ❤️ and Go by [ItsWanheda](https://github.com/ItsWanheda)
 
 </div>
+
+
+## 🔎 CLI Version
+
+The CLI exposes its current release version without contacting a target:
+
+```bash
+./http-header-analyzer version
+# or
+./http-header-analyzer --version
+```
+
+This is useful for verifying the binary installed in a local environment or CI job before running a scan.
