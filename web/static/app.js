@@ -889,15 +889,16 @@ function displayCertificate(cert) {
 
 
             <div class="tls-detail">
-
                 <dt>PUBLIC KEY</dt>
-
-                <dd>
-                    ${escapeHtml(
-      cert.public_key
-    )}
-                </dd>
-
+                <dd>${escapeHtml(cert.public_key)}</dd>
+            </div>
+            <div class="tls-detail">
+                <dt>KEY STRENGTH</dt>
+                <dd class="${cert.weak_public_key ? "status-fail" : "status-pass"}">${Number.isFinite(Number(cert.key_strength_bits)) ? escapeHtml(cert.key_strength_bits) + " bits" : "Unknown"} ${cert.weak_public_key ? "· WEAK" : ""}</dd>
+            </div>
+            <div class="tls-detail">
+                <dt>SIGNATURE STRENGTH</dt>
+                <dd class="${cert.weak_signature ? "status-fail" : "status-pass"}">${cert.weak_signature ? "WEAK SIGNATURE" : "No known legacy signature detected"}</dd>
             </div>
 
 
