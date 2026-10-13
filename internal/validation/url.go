@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -47,6 +48,35 @@ func IsPublicIP(ip net.IP) bool {
 	return true
 }
 
+// isNonCanonicalIPLiteral rejects numeric host forms that some resolvers
+// interpret as legacy IPv4 shorthand (decimal, octal, or hexadecimal).
+func isNonCanonicalIPLiteral(host string) bool {
+	parts := strings.Split(host, ".")
+	if len(parts) == 0 || len(parts) > 4 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+		lower := strings.ToLower(part)
+		base, digits := 10, lower
+		switch {
+		case strings.HasPrefix(lower, "0x"):
+			base, digits = 16, lower[2:]
+		case len(lower) > 1 && lower[0] == '0':
+			base, digits = 8, lower[1:]
+		}
+		if digits == "" {
+			return false
+		}
+		if _, err := strconv.ParseUint(digits, base, 64); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func ValidateURL(rawURL string) (string, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -75,7 +105,7 @@ func ValidateURL(rawURL string) (string, error) {
 	}
 
 	host := strings.TrimSuffix(strings.TrimSuffix(strings.ToLower(parsed.Hostname()), "."), ".")
-	if host == "" || strings.Contains(host, "%") || host == "localhost" ||
+	if host == "" || strings.Contains(host, "%") || isNonCanonicalIPLiteral(host) || host == "localhost" ||
 		strings.HasSuffix(host, ".localhost") ||
 		strings.HasSuffix(host, ".local") ||
 		strings.HasSuffix(host, ".internal") ||
