@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 func analyzeRobots(
