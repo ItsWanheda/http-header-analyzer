@@ -94,6 +94,7 @@ type AnalysisResult struct {
 	Issues []Issue `json:"issues"`
 
 	// Advanced analysis
+	CSP               CSPAnalysis           `json:"csp"`
 	HSTS              HSTSAnalysis           `json:"hsts"`
 	SecurityTxt       SecurityTxtAnalysis    `json:"security_txt"`
 	Technologies      TechnologyDetection    `json:"technologies"`
