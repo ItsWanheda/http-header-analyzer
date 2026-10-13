@@ -42,6 +42,9 @@ type CertificateInfo struct {
 	DaysRemaining  int      `json:"days_remaining"`
 	Signature      string   `json:"signature_algorithm"`
 	PublicKey      string   `json:"public_key"`
+	KeyStrengthBits int     `json:"key_strength_bits"`
+	WeakSignature bool      `json:"weak_signature"`
+	WeakPublicKey bool       `json:"weak_public_key"`
 	DNSNames       []string `json:"dns_names"`
 	Wildcard       bool     `json:"wildcard"`
 	MatchesTarget  bool     `json:"matches_target"`
