@@ -152,8 +152,13 @@ func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*m
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	finalURL := targetURL
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalURL = resp.Request.URL.String()
+	}
 	result := &models.AnalysisResult{
 		URL:        targetURL,
+		FinalURL:   finalURL,
 		Timestamp:  time.Now().UTC(),
 		HTTPStatus: resp.StatusCode,
 	}
@@ -161,7 +166,7 @@ func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*m
 	result.SecurityHeaders, result.Issues = analyzeSecurityHeadersWithRules(resp.Header)
 	result.TLS = analyzeTLS(resp)
 	if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
-		result.Certificate = analyzeCertificate(targetURL, resp.TLS.PeerCertificates[0], len(resp.TLS.VerifiedChains) > 0)
+		result.Certificate = analyzeCertificate(finalURL, resp.TLS.PeerCertificates[0], len(resp.TLS.VerifiedChains) > 0)
 	}
 	result.Robots = analyzeRobots(ctx, a.client, targetURL)
 	result.Redirects = a.analyzeRedirects(ctx, targetURL)
