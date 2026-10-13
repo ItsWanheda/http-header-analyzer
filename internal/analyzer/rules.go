@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/ItsWanheda/http-header-analyzer/internal/models"
@@ -13,10 +14,10 @@ var RuleRegistry = []models.SecurityRule{
 		Explanation: "HSTS ensures browsers only connect via HTTPS.",
 		Remediation: "Add Strict-Transport-Security with a long max-age and includeSubDomains.",
 		CheckLogic: func(v string) (bool, string) {
-			lower := strings.ToLower(v)
-			if !strings.Contains(lower, "max-age=") { return false, "Missing max-age directive" }
-			if !strings.Contains(lower, "includesubdomains") { return false, "Missing includeSubDomains directive" }
-			return true, ""
+			headers := make(http.Header)
+			headers.Set("Strict-Transport-Security", v)
+			assessment := analyzeHSTS(headers)
+			return assessment.Status == "pass", assessment.Message
 		},
 	},
 	{
