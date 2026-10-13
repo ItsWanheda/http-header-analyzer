@@ -1848,15 +1848,6 @@ async function generatePDFReport() {
 }
 
 
-document.addEventListener("DOMContentLoaded", () => {
-  initEventListeners();
-  initThemeToggle();
-  renderScanHistory();
-  const pdfBtn = $("pdfBtn");
-  if (pdfBtn) pdfBtn.addEventListener("click", generatePDFReport);
-});
-
-
 function displayHSTS(hsts) {
   const container =
     document.getElementById(
@@ -2286,15 +2277,13 @@ function displayCORS(data) {
    INITIALIZATION
    ========================================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
+document.addEventListener("DOMContentLoaded", () => {
+  initEventListeners();
+  initThemeToggle();
+  renderScanHistory();
 
-    initEventListeners();
+  const pdfBtn = $("pdfBtn");
+  if (pdfBtn) pdfBtn.addEventListener("click", generatePDFReport);
 
-    console.log(
-      "HTTP Header Analyzer initialized."
-    );
-
-  }
-);
+  console.log("HTTP Header Analyzer initialized.");
+});
