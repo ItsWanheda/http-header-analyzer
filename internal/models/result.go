@@ -28,6 +28,7 @@ type TLSInfo struct {
 	ExpiresAt   string `json:"expires_at"`
 	Subject     string `json:"subject"`
 	Issuer      string `json:"issuer"`
+	Evaluated   bool   `json:"evaluated"`
 }
 
 type CertificateInfo struct {
@@ -78,6 +79,8 @@ type AnalysisResult struct {
 
 	SecurityHeaders []SecurityHeader `json:"security_headers"`
 	TLS             TLSInfo          `json:"tls"`
+	Certificate     CertificateInfo  `json:"certificate"`
+	Robots          RobotsInfo       `json:"robots"`
 	Redirects       []RedirectInfo    `json:"redirects"`
 
 	Score  int    `json:"score"`
