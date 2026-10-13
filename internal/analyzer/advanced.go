@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 
@@ -512,103 +512,59 @@ func containsVersion(value string) bool {
 // HTTP METHODS
 // ============================================================
 
-func (a *Analyzer) analyzeHTTPMethods(
-	ctx context.Context,
-	targetURL string,
-) models.HTTPMethodsAnalysis {
-
-	result :=
-		models.HTTPMethodsAnalysis{
-			Status: "pass",
-		}
-
-	methods := []string{
-		http.MethodOptions,
-		http.MethodGet,
-		http.MethodHead,
-		http.MethodPost,
-		http.MethodPut,
-		http.MethodPatch,
-		http.MethodDelete,
-		http.MethodTrace,
-		http.MethodConnect,
+func (a *Analyzer) analyzeHTTPMethods(ctx context.Context, targetURL string) models.HTTPMethodsAnalysis {
+	result := models.HTTPMethodsAnalysis{Status: "unknown", Message: "HTTP method support could not be determined"}
+	// OPTIONS is the only method probed. Never send POST, PUT, PATCH, DELETE,
+	// TRACE, or CONNECT just to infer whether an application supports them.
+	req, err := http.NewRequestWithContext(ctx, http.MethodOptions, targetURL, nil)
+	if err != nil {
+		return result
 	}
-
-	for _, method := range methods {
-
-		req, err := http.NewRequestWithContext(
-			ctx,
-			method,
-			targetURL,
-			nil,
-		)
-
-		if err != nil {
-			continue
-		}
-
-		resp, err :=
-			a.client.Do(req)
-
-		if err != nil {
-			continue
-		}
-
-		resp.Body.Close()
-
-		if resp.StatusCode >= 200 &&
-			resp.StatusCode < 400 {
-
-			result.Methods =
-				append(
-					result.Methods,
-					method,
-				)
-
-			switch method {
-
-			case http.MethodTrace,
-				http.MethodPut,
-				http.MethodDelete,
-				http.MethodConnect:
-
-				result.Dangerous =
-					append(
-						result.Dangerous,
-						method,
-					)
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := a.client.Do(req)
+	if err != nil {
+		result.Message = "OPTIONS probe failed; method support is unknown"
+		return result
+	}
+	defer resp.Body.Close()
+	allow := resp.Header.Values("Allow")
+	if len(allow) == 0 {
+		result.Message = "The server did not advertise an Allow header; method support is unknown"
+		return result
+	}
+	known := map[string]bool{}
+	for _, value := range allow {
+		for _, method := range strings.Split(value, ",") {
+			method = strings.ToUpper(strings.TrimSpace(method))
+			if method != "" && !known[method] {
+				known[method] = true
+				result.Methods = append(result.Methods, method)
 			}
 		}
 	}
-
-	for _, method :=
-		range result.Methods {
-
+	result.Status = "pass"
+	for _, method := range result.Methods {
+		switch method {
+		case http.MethodTrace, http.MethodPut, http.MethodDelete, http.MethodConnect:
+			result.Dangerous = append(result.Dangerous, method)
+		}
 		switch method {
 		case http.MethodTrace:
 			result.TraceEnabled = true
-
 		case http.MethodPut:
 			result.PutEnabled = true
-
 		case http.MethodDelete:
 			result.DeleteEnabled = true
 		}
 	}
-
 	if len(result.Dangerous) > 0 {
 		result.Status = "warn"
-
-		result.Message =
-			"Potentially dangerous HTTP methods are enabled."
+		result.Message = "The server advertises potentially sensitive HTTP methods in Allow; this is not proof that the methods are exploitable"
 	} else {
-		result.Message =
-			"No obviously dangerous HTTP methods detected."
+		result.Message = "No obviously dangerous methods were advertised in Allow"
 	}
-
 	return result
 }
-
 
 // ============================================================
 // CORS ANALYZER
@@ -631,9 +587,8 @@ func analyzeCORS(
 		}
 
 	if origin == "" {
-		result.Message =
-			"No CORS policy detected."
-
+		result.Status = "not_applicable"
+		result.Message = "No CORS allow-origin header was observed on this response"
 		return result
 	}
 
@@ -701,6 +656,41 @@ func analyzeCORS(
 	return result
 }
 
+
+// analyzeCORSWithContext sends one non-mutating preflight-style OPTIONS request
+// using a deliberately unrelated origin, then evaluates the observed headers.
+func (a *Analyzer) analyzeCORSWithContext(ctx context.Context, targetURL string, initial http.Header) models.CORSAnalysis {
+	result := analyzeCORS(initial)
+	req, err := http.NewRequestWithContext(ctx, http.MethodOptions, targetURL, nil)
+	if err != nil {
+		return result
+	}
+	const probeOrigin = "https://hha-probe.invalid"
+	req.Header.Set("Origin", probeOrigin)
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "authorization,content-type")
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return result
+	}
+	defer resp.Body.Close()
+	probed := analyzeCORS(resp.Header)
+	if probed.Present {
+		result = probed
+		if strings.EqualFold(strings.TrimSpace(probed.AllowOrigin), probeOrigin) {
+			result.Status = "warn"
+			result.Dangerous = true
+			result.Message = "The preflight response reflects an arbitrary Origin value; review the CORS allowlist"
+		}
+		if strings.EqualFold(strings.TrimSpace(probed.AllowOrigin), "*") && probed.AllowCredentials {
+			result.Status = "fail"
+			result.Dangerous = true
+			result.Message = "Wildcard origin and credentials were observed together; browsers reject this combination, but it indicates a configuration error"
+		}
+	}
+	return result
+}
 
 func splitHeaderList(value string) []string {
 	if value == "" {
