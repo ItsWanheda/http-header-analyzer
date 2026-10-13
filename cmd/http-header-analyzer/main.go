@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zharfatech/http-header-analyzer/internal/analyzer"
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/analyzer"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 const version = "1.0.0"

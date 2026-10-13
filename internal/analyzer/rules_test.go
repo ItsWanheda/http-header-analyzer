@@ -8,9 +8,10 @@ import (
 func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-	headers.Set("Content-Security-Policy", "default-src 'self'")
+	headers.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	headers.Set("X-Content-Type-Options", "nosniff")
 	headers.Set("X-Frame-Options", "DENY")
+	headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	headers.Add("Set-Cookie", "session=abc; Secure; HttpOnly; SameSite=Lax")
 
 	results, issues := analyzeSecurityHeadersWithRules(headers)
@@ -23,8 +24,8 @@ func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	}
 
 	for _, result := range results {
-		if result.Status != "pass" {
-			t.Errorf("%s status = %q, want pass", result.Name, result.Status)
+		if result.Status != "pass" && result.Status != "not_applicable" {
+			t.Errorf("%s status = %q, want pass or not_applicable", result.Name, result.Status)
 		}
 	}
 }

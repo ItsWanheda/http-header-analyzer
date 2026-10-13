@@ -21,13 +21,13 @@ Built for developers, security researchers, penetration testers, system administ
 | 🛡️ Security headers | Checks CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and related controls |
 | 🍪 Cookie security | Reviews `Secure`, `HttpOnly`, and `SameSite` protections |
 | 🔐 TLS inspection | Reports protocol, cipher, certificate, issuer, subject, and expiration details |
-| 🔀 Redirect analysis | Tracks redirect behavior and the final destination |
-| 📊 Security scoring | Produces a normalized score from 0–100 with a letter rating |
-| 🧠 Remediation | Provides explanations and practical recommendations for findings |
-| 🛑 SSRF defenses | Rejects localhost, private, loopback, link-local, multicast, and unspecified IP targets |
-| 🔎 Extended analysis | Detects technologies, CORS settings, HTTP methods, `security.txt`, and information disclosure signals |
-| ⚡ REST API | Supports JSON analysis requests and a health-check endpoint |
-| 🎨 Web dashboard | Responsive dark/light interface with loading states, notifications, exports, and clipboard tools |
+| 🔀 Redirect analysis | Records each redirect hop with bounded, individually validated requests |
+| 📊 Security scoring | Scores evaluated checks only, excludes not-applicable/unknown checks, and provides a 0–100 rating or N/A when no evidence can be scored |
+| 🧠 Remediation | Provides explanations, observed evidence, and practical recommendations for findings |
+| 🛑 SSRF defenses | Rejects local/reserved hostnames, special-use/private IP ranges, mixed public/private DNS answers, non-default ports, and unsafe redirect destinations |
+| 🔎 Extended analysis | Detects technologies, origin-aware CORS behavior, safely advertised HTTP methods, `security.txt`, robots.txt, CSP risks, and information disclosure signals |
+| ⚡ REST API | JSON single and batch analysis endpoints, bounded scan concurrency, per-client rate limiting, and a health-check endpoint |
+| 🎨 Web dashboard | Responsive dark/light dashboard with an executive summary, severity counters, finding search/sort/expand controls, cancelable scans, and JSON/CSV/print-to-PDF exports |
 
 ## 📸 Screenshots
 
@@ -48,10 +48,10 @@ Target URL
 Validate URL and apply SSRF protections
     │
     ▼
-Fetch response and inspect headers, cookies, TLS, and redirects
+Fetch response and inspect headers, individual cookies, TLS/certificate metadata, and redirect hops
     │
     ▼
-Run extended checks and collect evidence
+Run safe OPTIONS/CORS preflight checks, parse CSP policy risks, inspect robots.txt and security.txt, and collect evidence
     │
     ▼
 Calculate score and generate remediation guidance
@@ -62,7 +62,7 @@ Display results in the dashboard or return JSON
 
 ## 📊 Security rating
 
-The analyzer reports a score between 0 and 100 and maps it to the following rating bands:
+The analyzer reports a score between 0 and 100 and maps it to the following rating bands when applicable. Checks marked not applicable or unknown do not earn points or reduce the denominator. If no checks can be scored, the result is `N/A`, not an artificial zero or a passing grade.
 
 | Score | Rating |
 | ---: | :---: |
@@ -148,7 +148,7 @@ Use quality gates in CI/CD:
 ./http-header-analyzer scan --json --min-score 80 --fail-on high https://example.com
 ```
 
-The CLI exits with a non-zero status when a scan cannot be completed, making it suitable for scripts and CI pipelines.
+The CLI exits with a non-zero status when a scan cannot be completed, making it suitable for scripts and CI pipelines. By default, web scans use safe discovery only: HTTP method analysis issues OPTIONS and reads the Allow header rather than sending state-changing methods.
 
 ### Build a production binary
 
@@ -202,6 +202,26 @@ Example response shape:
 }
 ```
 
+### Batch analysis
+
+```http
+POST /api/analyze/batch
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "urls": [
+    "https://example.com",
+    "https://example.org"
+  ]
+}
+```
+
+The endpoint accepts **1–10 targets per request**, validates every URL before starting work, and limits batch parallelism to three workers while sharing a four-scan process-wide concurrency cap. Individual failures are returned alongside successful results. API requests are also rate-limited per client IP; health checks are exempt. These in-process limits protect a single server instance, so multi-instance deployments should add edge-level rate limits and network egress controls.
+
 ### Health check
 
 ```http
@@ -224,10 +244,14 @@ Because the application makes outbound requests to user-supplied URLs, URL valid
 - Rejects embedded credentials and URL fragments.
 - Rejects localhost and local hostnames.
 - Rejects private, loopback, link-local, multicast, and unspecified IP literals.
-- Restricts explicit ports to `80` and `443`.
+- Restricts requests to the default port for the selected scheme (HTTP 80 or HTTPS 443).
+- Rejects special-use and documentation IP ranges and rejects hostnames with local/reserved suffixes.
+- Resolves hostnames at connection time and rejects mixed public/private address answers; outbound proxy environment variables are not used so proxy DNS cannot bypass destination checks.
+- Uses only OPTIONS for HTTP-method discovery; it does not send POST, PUT, PATCH, DELETE, TRACE, or CONNECT as probes.
+- Bounds API request sizes, per-client rate, scan concurrency, batch target count, and per-scan duration.
 - Limits request-body sizes and validates JSON API input.
 
-These controls reduce risk but do not replace network-level egress controls, authentication, authorization, or responsible operation. Deploy the service behind appropriate infrastructure controls in production.
+These controls reduce risk but do not replace network-level egress controls, authentication, authorization, or responsible operation. The public scanning API does not provide user identity or tenant isolation; run it behind authentication or trusted network controls if it is not intended for anonymous use. The built-in rate limiter is process-local and does not coordinate across replicas. Deploy the service behind appropriate infrastructure controls in production.
 
 See [SECURITY.md](SECURITY.md) for reporting security issues.
 
@@ -241,10 +265,11 @@ http-header-analyzer/
 │   └── server/
 │       └── main.go              # HTTP server and route registration
 ├── internal/
-│   ├── analyzer/                # Header, TLS, redirect, and extended analysis
-│   ├── api/                     # HTTP handlers and JSON responses
+│   ├── analyzer/                # Header, CSP, TLS, certificate, redirect, and extended analysis
+│   ├── api/                     # HTTP handlers, batch API, rate limiting, and JSON responses
 │   ├── models/                  # Analysis result types
-│   └── validation/              # URL and SSRF-aware validation
+│   └── validation/              # URL, port, and SSRF-aware destination validation
+├── tests/                       # Playwright dashboard smoke tests
 ├── web/
 │   ├── templates/               # HTML templates
 │   └── static/                  # JavaScript and CSS assets
@@ -253,6 +278,10 @@ http-header-analyzer/
 ├── go.sum
 └── README.md
 ```
+
+### Browser-local scan history
+
+The dashboard keeps the most recent 20 structured scan results in the current browser's `localStorage`. It shows new, resolved, and unchanged findings when another scan of the same hostname is run. This is intentionally client-local and privacy-preserving; it is not a shared server-side history and clearing browser storage removes it. Export JSON/CSV or print the report to retain a durable copy.
 
 ## 🧪 Development
 
@@ -279,7 +308,10 @@ Run static analysis and build all packages:
 ```bash
 go vet ./...
 go build ./...
+go mod verify
 ```
+
+The GitHub Actions pipeline also runs the race detector, a Go vulnerability scan with `govulncheck`, and a Playwright Chromium smoke suite for dashboard behavior.
 
 ---
 
@@ -305,11 +337,11 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 - [x] CSV and PDF report support
 - [x] CSP visualization
 - [x] TLS, cookie, redirect, CORS, and `security.txt` checks
-- [ ] Historical scan tracking
-- [ ] Result comparison and regression detection
-- [ ] Batch URL scanning
+- [x] Browser-local scan history (up to 20 saved scans)
+- [x] Result comparison and new/resolved finding regression detection
+- [x] Batch URL scanning with bounded concurrency (up to 10 targets per request)
 - [ ] Subdomain analysis
-- [ ] Expanded CSP policy analysis
+- [x] Expanded CSP policy analysis with structured warnings
 
 ## 📄 License
 

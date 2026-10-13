@@ -3,7 +3,7 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 var RuleRegistry = []models.SecurityRule{
@@ -25,9 +25,10 @@ var RuleRegistry = []models.SecurityRule{
 		Explanation: "CSP reduces the impact of XSS and content injection attacks.",
 		Remediation: "Implement a restrictive Content-Security-Policy appropriate for the application.",
 		CheckLogic: func(v string) (bool, string) {
-			lower := strings.ToLower(v)
-			if !strings.Contains(lower, "default-src") { return false, "Missing default-src directive" }
-			if strings.Contains(lower, "'unsafe-inline'") { return false, "Contains unsafe-inline" }
+			assessment := analyzeCSP(v)
+			if assessment.Status == "fail" {
+				return false, strings.Join(assessment.Warnings, "; ")
+			}
 			return true, ""
 		},
 	},
@@ -49,6 +50,41 @@ var RuleRegistry = []models.SecurityRule{
 		CheckLogic: func(v string) (bool, string) {
 			value := strings.ToUpper(strings.TrimSpace(v))
 			if value != "DENY" && value != "SAMEORIGIN" { return false, "Value should be DENY or SAMEORIGIN" }
+			return true, ""
+		},
+	},
+	{
+		Name: "Referrer-Policy", HeaderName: "Referrer-Policy",
+		Severity: models.SeverityMedium, Required: true,
+		Explanation: "Controls how much referrer information is sent to other origins.",
+		Remediation: "Prefer strict-origin-when-cross-origin or a more restrictive policy suitable for the application.",
+		CheckLogic: func(v string) (bool, string) {
+			value := strings.ToLower(strings.TrimSpace(v))
+			allowed := map[string]bool{"no-referrer": true, "no-referrer-when-downgrade": true, "origin": true, "origin-when-cross-origin": true, "same-origin": true, "strict-origin": true, "strict-origin-when-cross-origin": true, "unsafe-url": true}
+			if !allowed[value] { return false, "Unknown or invalid Referrer-Policy value" }
+			if value == "unsafe-url" { return false, "unsafe-url may disclose full URL paths and query strings cross-origin" }
+			return true, ""
+		},
+	},
+	{
+		Name: "Permissions-Policy", HeaderName: "Permissions-Policy",
+		Severity: models.SeverityLow, Required: false,
+		Explanation: "Restricts browser features such as camera, microphone, and geolocation.",
+		Remediation: "Define an application-appropriate Permissions-Policy and disable features that are not needed.",
+		CheckLogic: func(v string) (bool, string) {
+			if strings.TrimSpace(v) == "" { return false, "Permissions-Policy is empty" }
+			return true, ""
+		},
+	},
+	{
+		Name: "Cross-Origin-Opener-Policy", HeaderName: "Cross-Origin-Opener-Policy",
+		Severity: models.SeverityLow, Required: false,
+		Explanation: "Can isolate the top-level browsing context from cross-origin documents.",
+		Remediation: "Consider same-origin where compatible with the application's cross-origin integration requirements.",
+		CheckLogic: func(v string) (bool, string) {
+			value := strings.ToLower(strings.TrimSpace(v))
+			if value != "same-origin" && value != "same-origin-allow-popups" && value != "unsafe-none" { return false, "Unrecognized Cross-Origin-Opener-Policy value" }
+			if value == "unsafe-none" { return false, "unsafe-none does not provide opener isolation" }
 			return true, ""
 		},
 	},
