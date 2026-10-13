@@ -243,7 +243,8 @@ function displayResults(result) {
 
   displayCSP(
     result.security_headers ||
-    []
+    [],
+    result.csp || null
   );
 
   updateJSONPreview(
@@ -1346,7 +1347,7 @@ function parseCSP(value) {
 }
 
 
-function displayCSP(headers) {
+function displayCSP(headers, assessment = null) {
   const container =
     $("cspDirectives") ||
     $("cspVisualizer") ||
@@ -1356,16 +1357,21 @@ function displayCSP(headers) {
     return;
   }
 
-  const csp =
-    findHeader(
-      headers,
-      "Content-Security-Policy"
-    );
+  const csp = findHeader(headers, "Content-Security-Policy");
+  const rawPolicy = $("cspRawPolicy");
+  const statusLabel = $("cspStatus");
+  const summary = $("cspSummary");
+  if (rawPolicy) rawPolicy.textContent = csp?.value || "NO CONTENT-SECURITY-POLICY HEADER FOUND";
+  if (statusLabel) {
+    statusLabel.textContent = String(assessment?.status || (csp?.value ? "unknown" : "not present")).toUpperCase();
+    statusLabel.className = "csp-status status-" + String(assessment?.status || "warn").toLowerCase();
+  }
+  if (summary) {
+    const warningCount = Array.isArray(assessment?.warnings) ? assessment.warnings.length : 0;
+    summary.innerHTML = `<div class="csp-metric"><strong>${Number(assessment?.directive_count || 0)}</strong><span>DIRECTIVES</span></div><div class="csp-metric"><strong>${warningCount}</strong><span>WARNINGS</span></div><div class="csp-metric"><strong>${assessment?.unsafe_eval || assessment?.wildcard_source ? "HIGH" : warningCount ? "REVIEW" : csp?.value ? "LOW" : "—"}</strong><span>POLICY RISK</span></div>`;
+  }
 
-  if (
-    !csp ||
-    !csp.value
-  ) {
+  if (!csp || !csp.value) {
     container.innerHTML = `
             <div class="empty-state">
 
@@ -1396,7 +1402,10 @@ function displayCSP(headers) {
     return;
   }
 
+  const warningMarkup = (Array.isArray(assessment?.warnings) ? assessment.warnings : []).map(warning => `<div><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> ${escapeHtml(warning)}</div>`).join("");
+  const warningPanel = warningMarkup ? `<div class="csp-warning-list">${warningMarkup}</div>` : "";
   container.innerHTML = `
+        ${warningPanel}
         <div class="csp-summary">
 
             <div class="csp-metric">
