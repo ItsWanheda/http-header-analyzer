@@ -26,7 +26,7 @@ var RuleRegistry = []models.SecurityRule{
 		Remediation: "Implement a restrictive Content-Security-Policy appropriate for the application.",
 		CheckLogic: func(v string) (bool, string) {
 			assessment := analyzeCSP(v)
-			if assessment.Status == "fail" || assessment.Status == "warn" {
+			if assessment.Status == "fail" {
 				return false, strings.Join(assessment.Warnings, "; ")
 			}
 			return true, ""
