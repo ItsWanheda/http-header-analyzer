@@ -14,9 +14,10 @@ import (
 	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
-func analyzeCertificate(targetURL string, cert *x509.Certificate) models.CertificateInfo {
+func analyzeCertificate(targetURL string, cert *x509.Certificate, chainVerified bool) models.CertificateInfo {
 	info := models.CertificateInfo{
 		Present: true,
+		ChainVerified: chainVerified,
 	}
 
 	if cert == nil {
@@ -73,7 +74,7 @@ func analyzeCertificate(targetURL string, cert *x509.Certificate) models.Certifi
 	info.MatchesTarget = certificateMatchesTarget(targetURL, cert)
 	// The HTTPS request has already succeeded with Go's default certificate-chain
 	// and hostname verification. Keep key/signature strength as separate findings.
-	info.Valid = info.Valid && info.MatchesTarget
+	info.Valid = info.Valid && info.MatchesTarget && info.ChainVerified
 
 	return info
 }
