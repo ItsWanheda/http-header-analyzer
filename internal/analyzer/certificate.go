@@ -1,6 +1,9 @@
 package analyzer
 
 import (
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"net"
@@ -8,12 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
-func analyzeCertificate(targetURL string, cert *x509.Certificate) models.CertificateInfo {
+func analyzeCertificate(targetURL string, cert *x509.Certificate, chainVerified bool) models.CertificateInfo {
 	info := models.CertificateInfo{
 		Present: true,
+		ChainVerified: chainVerified,
 	}
 
 	if cert == nil {
@@ -31,6 +35,25 @@ func analyzeCertificate(targetURL string, cert *x509.Certificate) models.Certifi
 	info.NotAfter = cert.NotAfter.Format(time.RFC3339)
 	info.Signature = cert.SignatureAlgorithm.String()
 	info.PublicKey = cert.PublicKeyAlgorithm.String()
+	switch key := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		info.KeyStrengthBits = key.N.BitLen()
+		info.PublicKey = fmt.Sprintf("RSA (%d-bit)", info.KeyStrengthBits)
+		info.WeakPublicKey = info.KeyStrengthBits < 2048
+	case *ecdsa.PublicKey:
+		info.KeyStrengthBits = key.Curve.Params().BitSize
+		info.PublicKey = fmt.Sprintf("ECDSA (%d-bit)", info.KeyStrengthBits)
+		info.WeakPublicKey = info.KeyStrengthBits < 256
+	case ed25519.PublicKey:
+		info.KeyStrengthBits = 256
+		info.PublicKey = "Ed25519"
+	default:
+		info.WeakPublicKey = true
+	}
+	switch cert.SignatureAlgorithm {
+	case x509.MD5WithRSA, x509.SHA1WithRSA, x509.DSAWithSHA1, x509.ECDSAWithSHA1:
+		info.WeakSignature = true
+	}
 	info.DNSNames = append([]string{}, cert.DNSNames...)
 
 	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
@@ -49,6 +72,9 @@ func analyzeCertificate(targetURL string, cert *x509.Certificate) models.Certifi
 	}
 
 	info.MatchesTarget = certificateMatchesTarget(targetURL, cert)
+	// The HTTPS request has already succeeded with Go's default certificate-chain
+	// and hostname verification. Keep key/signature strength as separate findings.
+	info.Valid = info.Valid && info.MatchesTarget && info.ChainVerified
 
 	return info
 }

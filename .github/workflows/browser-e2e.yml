@@ -1,0 +1,66 @@
+name: Browser E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromium:
+    name: Dashboard smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.2"
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --no-package-lock @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: go build -o /tmp/http-header-analyzer ./cmd/server
+
+      - name: Start application
+        run: |
+          /tmp/http-header-analyzer > /tmp/http-header-analyzer.log 2>&1 &
+          echo $! > /tmp/http-header-analyzer.pid
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/http-header-analyzer.log
+          exit 1
+
+      - name: Run browser smoke tests
+        run: ./node_modules/.bin/playwright test --config tests/playwright.config.cjs
+
+      - name: Upload browser test traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore

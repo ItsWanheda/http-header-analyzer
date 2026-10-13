@@ -1,12 +1,14 @@
 package api
 import (
+    "context"
     "encoding/json"
     "fmt"
     "html/template"
     "net/http"
     "strings"
+    "time"
 
-    "github.com/zharfatech/http-header-analyzer/internal/validation"
+    "github.com/ItsWanheda/http-header-analyzer/internal/validation"
 )
 
 const reportTemplate = `
@@ -549,7 +551,7 @@ func (h *Handler) HandleReport(
 		URL string `json:"url"`
 	}
 
-	if err := readJSON(r, &request); err != nil {
+	if err := decodeJSON(w, r, &request); err != nil {
 		http.Error(
 			w,
 			"Invalid request body",
@@ -564,7 +566,14 @@ func (h *Handler) HandleReport(
 		return
 	}
 
-	result, err := h.analyzer.AnalyzeWithContext(r.Context(), validURL)
+	if !h.acquireScanSlot(r.Context()) {
+		http.Error(w, "Scanner is at capacity", http.StatusTooManyRequests)
+		return
+	}
+	defer h.releaseScanSlot()
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	result, err := h.analyzer.AnalyzeWithContext(ctx, validURL)
 
 	if err != nil {
 		http.Error(

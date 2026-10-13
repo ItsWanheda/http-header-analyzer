@@ -28,11 +28,13 @@ type TLSInfo struct {
 	ExpiresAt   string `json:"expires_at"`
 	Subject     string `json:"subject"`
 	Issuer      string `json:"issuer"`
+	Evaluated   bool   `json:"evaluated"`
 }
 
 type CertificateInfo struct {
 	Present        bool     `json:"present"`
 	Valid          bool     `json:"valid"`
+	ChainVerified  bool     `json:"chain_verified"`
 	Subject        string   `json:"subject"`
 	Issuer         string   `json:"issuer"`
 	SerialNumber   string   `json:"serial_number"`
@@ -41,6 +43,9 @@ type CertificateInfo struct {
 	DaysRemaining  int      `json:"days_remaining"`
 	Signature      string   `json:"signature_algorithm"`
 	PublicKey      string   `json:"public_key"`
+	KeyStrengthBits int     `json:"key_strength_bits"`
+	WeakSignature bool      `json:"weak_signature"`
+	WeakPublicKey bool       `json:"weak_public_key"`
 	DNSNames       []string `json:"dns_names"`
 	Wildcard       bool     `json:"wildcard"`
 	MatchesTarget  bool     `json:"matches_target"`
@@ -73,11 +78,16 @@ type Issue struct {
 }
 
 type AnalysisResult struct {
-	URL       string    `json:"url"`
-	Timestamp time.Time `json:"timestamp"`
+	URL        string    `json:"url"`
+	FinalURL   string    `json:"final_url"`
+	Timestamp  time.Time `json:"timestamp"`
+	HTTPStatus int       `json:"http_status"`
+	DurationMS int64     `json:"duration_ms"`
 
 	SecurityHeaders []SecurityHeader `json:"security_headers"`
 	TLS             TLSInfo          `json:"tls"`
+	Certificate     CertificateInfo  `json:"certificate"`
+	Robots          RobotsInfo       `json:"robots"`
 	Redirects       []RedirectInfo    `json:"redirects"`
 
 	Score  int    `json:"score"`
@@ -86,6 +96,7 @@ type AnalysisResult struct {
 	Issues []Issue `json:"issues"`
 
 	// Advanced analysis
+	CSP               CSPAnalysis           `json:"csp"`
 	HSTS              HSTSAnalysis           `json:"hsts"`
 	SecurityTxt       SecurityTxtAnalysis    `json:"security_txt"`
 	Technologies      TechnologyDetection    `json:"technologies"`

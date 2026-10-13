@@ -8,9 +8,10 @@ import (
 func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-	headers.Set("Content-Security-Policy", "default-src 'self'")
+	headers.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	headers.Set("X-Content-Type-Options", "nosniff")
 	headers.Set("X-Frame-Options", "DENY")
+	headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	headers.Add("Set-Cookie", "session=abc; Secure; HttpOnly; SameSite=Lax")
 
 	results, issues := analyzeSecurityHeadersWithRules(headers)
@@ -23,8 +24,8 @@ func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	}
 
 	for _, result := range results {
-		if result.Status != "pass" {
-			t.Errorf("%s status = %q, want pass", result.Name, result.Status)
+		if result.Status != "pass" && result.Status != "not_applicable" {
+			t.Errorf("%s status = %q, want pass or not_applicable", result.Name, result.Status)
 		}
 	}
 }
@@ -44,5 +45,29 @@ func TestCalculateRating(t *testing.T) {
 		if got := calculateRating(score); got != want {
 			t.Errorf("calculateRating(%d) = %q, want %q", score, got, want)
 		}
+	}
+}
+
+func TestHSTSScoringDistinguishesDisabledAndWeakMaxAge(t *testing.T) {
+	tests := []struct {
+		name, value, want string
+	}{
+		{name: "disabled", value: "max-age=0; includeSubDomains", want: "fail"},
+		{name: "short", value: "max-age=604800; includeSubDomains", want: "warn"},
+		{name: "strong", value: "max-age=31536000; includeSubDomains", want: "pass"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			headers := make(http.Header)
+			headers.Set("Strict-Transport-Security", tt.value)
+			results, _ := analyzeSecurityHeadersWithRules(headers)
+			for _, result := range results {
+				if result.Name == "Strict-Transport-Security" {
+					if result.Status != tt.want { t.Fatalf("HSTS status = %q, want %q", result.Status, tt.want) }
+					return
+				}
+			}
+			t.Fatal("HSTS security header row not found")
+		})
 	}
 }

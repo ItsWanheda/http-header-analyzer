@@ -72,3 +72,20 @@ type CORSAnalysis struct {
 	Status           string   `json:"status"`
 	Message          string   `json:"message"`
 }
+
+// CSPAnalysis is the structured policy assessment for a Content-Security-Policy response header.
+type CSPAnalysis struct {
+	Present                 bool     `json:"present"`
+	Status                  string   `json:"status"`
+	DirectiveCount          int      `json:"directive_count"`
+	UnsafeInline            bool     `json:"unsafe_inline"`
+	UnsafeEval              bool     `json:"unsafe_eval"`
+	WildcardSource          bool     `json:"wildcard_source"`
+	InsecureHTTPSource      bool     `json:"insecure_http_source"`
+	ObjectSrcRestricted     bool     `json:"object_src_restricted"`
+	BaseURIConfigured       bool     `json:"base_uri_configured"`
+	FrameAncestorsConfigured bool    `json:"frame_ancestors_configured"`
+	DuplicateDirectives     []string `json:"duplicate_directives,omitempty"`
+	Warnings                []string `json:"warnings,omitempty"`
+	Message                 string   `json:"message"`
+}

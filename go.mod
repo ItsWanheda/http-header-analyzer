@@ -1,4 +1,4 @@
-module github.com/zharfatech/http-header-analyzer
+module github.com/ItsWanheda/http-header-analyzer
 
 go 1.21
 
