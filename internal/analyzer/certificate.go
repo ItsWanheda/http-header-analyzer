@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 func analyzeCertificate(targetURL string, cert *x509.Certificate) models.CertificateInfo {
