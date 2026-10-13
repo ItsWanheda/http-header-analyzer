@@ -231,6 +231,17 @@ func analyzeSecurityHeadersWithRules(headers http.Header) ([]models.SecurityHead
 			} else {
 				status, message = "not_applicable", "Optional header is not set; applicability depends on the application"
 			}
+		} else if rule.HeaderName == "Strict-Transport-Security" {
+			assessment := analyzeHSTS(headers)
+			switch assessment.Status {
+			case "fail":
+				status = "fail"
+			case "warn":
+				status = "warn"
+			default:
+				status = "pass"
+			}
+			message = assessment.Message
 		} else if rule.HeaderName == "Content-Security-Policy" {
 			assessment := analyzeCSP(value)
 			switch assessment.Status {

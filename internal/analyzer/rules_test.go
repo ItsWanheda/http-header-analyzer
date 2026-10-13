@@ -47,3 +47,30 @@ func TestCalculateRating(t *testing.T) {
 		}
 	}
 }
+
+
+func TestHSTSScoringDistinguishesDisabledAndWeakMaxAge(t *testing.T) {
+	tests := []struct {
+		name, value, want string
+	}{
+		{name: "disabled max-age", value: "max-age=0; includeSubDomains", want: "fail"},
+		{name: "short max-age", value: "max-age=604800; includeSubDomains", want: "warn"},
+		{name: "strong policy", value: "max-age=31536000; includeSubDomains", want: "pass"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			headers := make(http.Header)
+			headers.Set("Strict-Transport-Security", tt.value)
+			results, _ := analyzeSecurityHeadersWithRules(headers)
+			for _, result := range results {
+				if result.Name == "Strict-Transport-Security" {
+					if result.Status != tt.want {
+						t.Fatalf("HSTS status = %q, want %q", result.Status, tt.want)
+					}
+					return
+				}
+			}
+			t.Fatal("HSTS security header row not found")
+		})
+	}
+}
