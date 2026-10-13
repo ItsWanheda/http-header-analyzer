@@ -2,7 +2,7 @@ package analyzer
 
 import (
     "net/http"
-    "github.com/zharfatech/http-header-analyzer/internal/models"
+    "github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 // analyzeSecurityHeaders analyzes the security headers in the response
