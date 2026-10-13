@@ -347,6 +347,20 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 This project is distributed under the [MIT License](LICENSE).
 
+## 🔎 CLI Version
+
+The CLI exposes its current release version without contacting a target:
+
+```bash
+./http-header-analyzer version
+# or
+./http-header-analyzer --version
+```
+
+This is useful for verifying the binary installed in a local environment or CI job before running a scan.
+
+---
+
 ## 👤 Author
 
 Created and maintained by [ItsWanheda](https://github.com/ItsWanheda).
@@ -362,16 +376,3 @@ If you find the project useful, consider giving it a ⭐ and sharing feedback th
 Made with ❤️ and Go by [ItsWanheda](https://github.com/ItsWanheda)
 
 </div>
-
-
-## 🔎 CLI Version
-
-The CLI exposes its current release version without contacting a target:
-
-```bash
-./http-header-analyzer version
-# or
-./http-header-analyzer --version
-```
-
-This is useful for verifying the binary installed in a local environment or CI job before running a scan.
