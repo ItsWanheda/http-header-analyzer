@@ -22,6 +22,25 @@ This changelog tracks the project's evolution from its initial implementation th
 
 # 🚀 Version History
 
+## [Unreleased] — Security, Reporting, and Regression Tracking
+
+### Security and correctness
+- Enforced default HTTP/HTTPS ports, rejected special-use IP networks and local/reserved hostnames, disabled proxy-environment routing, and rejected mixed public/private DNS answer sets.
+- Changed HTTP method discovery to read only an OPTIONS response's `Allow` header rather than send state-changing methods.
+- Reworked the score to count explicitly evaluated controls and exclude not-applicable or unknown checks.
+- Connected certificate and robots.txt data to the API response, expanded certificate key/signature reporting, and added structured CSP risk analysis.
+- Ensured redirect analysis observes one hop at a time and validates each next destination.
+
+### Dashboard and reporting
+- Added executive summary counters, filterable and expandable findings, cancelable scans, responsive batch controls, and accessible theme switching.
+- Added browser-local scan history and new/resolved/unchanged finding comparisons.
+- Made the print-to-PDF action use the current result rather than re-run the target scan, and added CSV export with spreadsheet formula-injection mitigation.
+
+### API and verification
+- Added a rate-limited API middleware, a 10-target batch endpoint with bounded workers, scan concurrency caps, and request/resource bounds.
+- Standardized the Go module/import path, updated CI to Go 1.27.2, added race/module/vulnerability checks, and added Playwright dashboard smoke tests.
+
+
 ## [0.7.0] — Active Development
 
 > **Release milestone:** Advanced analysis, professional reporting, major security hardening, and production-oriented CLI tooling.
