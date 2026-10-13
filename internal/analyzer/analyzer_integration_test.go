@@ -73,6 +73,7 @@ func TestAnalyzeWithContextWiresAllAssessmentResultsAndUsesSafeMethods(t *testin
 	result, err := a.AnalyzeWithContext(ctx, "https://example.com")
 	if err != nil { t.Fatalf("AnalyzeWithContext returned error: %v", err) }
 
+	if result.FinalURL != "https://example.com" { t.Fatalf("final URL = %q, want https://example.com", result.FinalURL) }
 	if result.HTTPStatus != http.StatusOK { t.Fatalf("HTTP status = %d, want 200", result.HTTPStatus) }
 	if result.DurationMS < 0 { t.Fatalf("duration should be non-negative, got %d", result.DurationMS) }
 	if !result.Certificate.Present || !result.Certificate.MatchesTarget || !result.Certificate.ChainVerified || !result.Certificate.Valid { t.Fatalf("certificate analysis was not wired: %+v", result.Certificate) }
