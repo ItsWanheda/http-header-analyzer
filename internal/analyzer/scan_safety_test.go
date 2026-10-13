@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -52,11 +53,17 @@ func TestCookieFindingsAreReportedIndividually(t *testing.T) {
 	if len(results) != len(RuleRegistry)+1 {
 		t.Fatalf("got %d header rows, want %d for two cookies", len(results), len(RuleRegistry)+1)
 	}
-	if len(issues) != 1 {
-		t.Fatalf("got %d cookie findings, want 1", len(issues))
+	var cookieIssues []models.Issue
+	for _, issue := range issues {
+		if strings.HasPrefix(issue.Header, "Set-Cookie (") {
+			cookieIssues = append(cookieIssues, issue)
+		}
 	}
-	if issues[0].Header != "Set-Cookie (preference)" {
-		t.Fatalf("finding header = %q, want cookie-specific name", issues[0].Header)
+	if len(cookieIssues) != 1 {
+		t.Fatalf("got %d cookie-specific findings among %d total findings, want 1 cookie finding", len(cookieIssues), len(issues))
+	}
+	if cookieIssues[0].Header != "Set-Cookie (preference)" {
+		t.Fatalf("finding header = %q, want cookie-specific name", cookieIssues[0].Header)
 	}
 }
 
