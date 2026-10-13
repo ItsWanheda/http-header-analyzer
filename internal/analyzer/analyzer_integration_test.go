@@ -2,9 +2,11 @@ package analyzer
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"io"
+	"math/big"
 	"net/http"
 	"strings"
 	"crypto/x509/pkix"
@@ -28,6 +30,7 @@ func TestAnalyzeWithContextWiresAllAssessmentResultsAndUsesSafeMethods(t *testin
 		DNSNames: []string{"example.com"},
 		SignatureAlgorithm: x509.SHA256WithRSA,
 		PublicKeyAlgorithm: x509.RSA,
+		PublicKey: &rsa.PublicKey{N: new(big.Int).Lsh(big.NewInt(1), 2047), E: 65537},
 	}
 	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		mu.Lock()
@@ -76,7 +79,7 @@ func TestAnalyzeWithContextWiresAllAssessmentResultsAndUsesSafeMethods(t *testin
 	if result.FinalURL != "https://example.com" { t.Fatalf("final URL = %q, want https://example.com", result.FinalURL) }
 	if result.HTTPStatus != http.StatusOK { t.Fatalf("HTTP status = %d, want 200", result.HTTPStatus) }
 	if result.DurationMS < 0 { t.Fatalf("duration should be non-negative, got %d", result.DurationMS) }
-	if !result.Certificate.Present || !result.Certificate.MatchesTarget || !result.Certificate.ChainVerified || !result.Certificate.Valid { t.Fatalf("certificate analysis was not wired: %+v", result.Certificate) }
+	if !result.Certificate.Present || !result.Certificate.MatchesTarget || !result.Certificate.ChainVerified || !result.Certificate.Valid || result.Certificate.KeyStrengthBits != 2048 || result.Certificate.WeakPublicKey || result.Certificate.WeakSignature { t.Fatalf("certificate analysis was not wired: %+v", result.Certificate) }
 	if !result.Robots.Found || len(result.Robots.SensitivePaths) != 1 { t.Fatalf("robots analysis was not wired: %+v", result.Robots) }
 	if !result.CSP.Present || result.CSP.Status != "pass" { t.Fatalf("CSP assessment was not wired: %+v", result.CSP) }
 	if result.Score < 80 { t.Fatalf("secure fixture score = %d, want at least 80", result.Score) }
