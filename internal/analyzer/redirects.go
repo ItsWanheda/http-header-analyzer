@@ -15,6 +15,9 @@ func (a *Analyzer) analyzeRedirects(parent context.Context, targetURL string) []
 	ctx, cancel := context.WithTimeout(parent, 8*time.Second)
 	defer cancel()
 
+	client := *a.client
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
 	current, err := url.Parse(targetURL)
 	if err != nil {
 		return redirects
@@ -31,7 +34,7 @@ func (a *Analyzer) analyzeRedirects(parent context.Context, targetURL string) []
 		}
 		req.Header.Set("User-Agent", userAgent)
 
-		resp, err := a.client.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			break
 		}
