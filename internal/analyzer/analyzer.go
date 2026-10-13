@@ -226,6 +226,20 @@ func analyzeSecurityHeadersWithRules(headers http.Header) ([]models.SecurityHead
 			} else {
 				status, message = "not_applicable", "Optional header is not set; applicability depends on the application"
 			}
+		} else if rule.HeaderName == "Content-Security-Policy" {
+			assessment := analyzeCSP(value)
+			switch assessment.Status {
+			case "fail":
+				status = "fail"
+			case "warn":
+				status = "warn"
+			default:
+				status = "pass"
+			}
+			message = assessment.Message
+			if len(assessment.Warnings) > 0 {
+				message = strings.Join(assessment.Warnings, "; ")
+			}
 		} else if ok, msg := rule.CheckLogic(value); !ok {
 			status, message = "fail", msg
 		}
@@ -233,10 +247,10 @@ func analyzeSecurityHeadersWithRules(headers http.Header) ([]models.SecurityHead
 		results = append(results, models.SecurityHeader{
 			Name: rule.Name, Value: value, Present: present, Status: status, Message: message,
 		})
-		if status != "pass" {
+		if status == "fail" || status == "warn" {
 			issues = append(issues, models.Issue{
 				Header: rule.HeaderName, Status: status, Severity: rule.Severity,
-				Explanation: rule.Explanation, Remediation: rule.Remediation,
+				Explanation: strings.TrimSpace(rule.Explanation + " " + message), Remediation: rule.Remediation,
 			})
 		}
 	}
