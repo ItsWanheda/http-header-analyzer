@@ -1656,6 +1656,41 @@ function exportJSON() {
 }
 
 
+function csvCell(value) {
+  let text = String(value ?? "");
+  // Prevent spreadsheet formula injection in CSV opened by office software.
+  if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function exportCSV() {
+  if (!lastResult) {
+    showToast("Run a scan first.", "error");
+    return;
+  }
+  const rows = [["record_type", "severity", "name", "status", "value", "details", "remediation"]];
+  (lastResult.security_headers || []).forEach(item => rows.push([
+    "header", "", item.name, item.status, item.value, item.message, ""
+  ]));
+  (lastResult.issues || []).forEach(item => rows.push([
+    "finding", item.severity, item.header, item.status, "", item.explanation, item.remediation
+  ]));
+  const csv = rows.map(row => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  let hostname = "target";
+  try { hostname = new URL(lastResult.url).hostname.replace(/[^a-z0-9.-]/gi, "_"); } catch {}
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `security-report-${hostname}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("CSV report exported.", "success");
+}
+
+
 /* =========================================================
    DOWNLOAD JSON ALIAS
    ========================================================= */
