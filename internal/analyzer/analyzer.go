@@ -165,6 +165,7 @@ func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*m
 	}
 	result.Robots = analyzeRobots(ctx, a.client, targetURL)
 	result.Redirects = a.analyzeRedirects(ctx, targetURL)
+	result.CSP = analyzeCSP(resp.Header.Get("Content-Security-Policy"))
 	result.HSTS = analyzeHSTS(resp.Header)
 	result.SecurityTxt = a.analyzeSecurityTxt(ctx, targetURL)
 	result.Technologies = detectTechnologies(resp.Header, string(bodyBytes))
