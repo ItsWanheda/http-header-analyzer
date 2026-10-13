@@ -32,7 +32,9 @@ func mustParseNetworks(cidrRanges []string) []*net.IPNet {
 // IsPublicIP is deliberately conservative: special-use, private, and non-global
 // destinations are rejected before the scanner opens an outbound connection.
 func IsPublicIP(ip net.IP) bool {
-	if ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+	if ip == nil { return false }
+	if ipv4 := ip.To4(); ipv4 != nil { ip = ipv4 }
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
 		ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() ||
 		!ip.IsGlobalUnicast() {
 		return false
@@ -73,7 +75,7 @@ func ValidateURL(rawURL string) (string, error) {
 	}
 
 	host := strings.TrimSuffix(strings.TrimSuffix(strings.ToLower(parsed.Hostname()), "."), ".")
-	if host == "" || host == "localhost" ||
+	if host == "" || strings.Contains(host, "%") || host == "localhost" ||
 		strings.HasSuffix(host, ".localhost") ||
 		strings.HasSuffix(host, ".local") ||
 		strings.HasSuffix(host, ".internal") ||
