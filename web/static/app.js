@@ -17,6 +17,10 @@
  */
 
 let lastResult = null;
+let activeScanController = null;
+let currentHistoryID = null;
+const SCAN_HISTORY_KEY = "hha.scanHistory.v1";
+const MAX_LOCAL_HISTORY = 20;
 
 
 /* =========================================================
@@ -108,7 +112,7 @@ function showToast(message, type = "info") {
    API
    ========================================================= */
 
-async function analyzeTarget(target) {
+async function analyzeTarget(target, signal) {
   const response =
     await fetch("/api/analyze", {
       method: "POST",
@@ -120,7 +124,8 @@ async function analyzeTarget(target) {
 
       body: JSON.stringify({
         url: target
-      })
+      }),
+      signal
     });
 
   let data;
@@ -150,96 +155,41 @@ async function analyzeTarget(target) {
    ========================================================= */
 
 async function runScan() {
-  const input =
-    $("urlInput") ||
-    $("url") ||
-    $("targetUrl");
+  const input = $("urlInput");
+  if (!input) { showToast("URL input not found.", "error"); return; }
+  let target = input.value.trim();
+  if (!target) { showToast("Enter a URL first.", "error"); input.focus(); return; }
+  if (!/^https?:\/\//i.test(target)) target = "https://" + target;
 
-  if (!input) {
-    showToast(
-      "URL input not found.",
-      "error"
-    );
-
-    return;
-  }
-
-  let target =
-    input.value.trim();
-
-  if (!target) {
-    showToast(
-      "Enter a URL first.",
-      "error"
-    );
-
-    input.focus();
-
-    return;
-  }
-
-  if (
-    !target.startsWith("http://") &&
-    !target.startsWith("https://")
-  ) {
-    target =
-      "https://" + target;
-  }
-
-  const scanButton =
-    $("scanBtn") ||
-    $("analyzeBtn") ||
-    $("scanButton");
-
-  const originalText =
-    scanButton
-      ? scanButton.innerHTML
-      : "";
-
+  const scanButton = $("analyzeBtn");
+  const cancelButton = $("cancelScanBtn");
+  const preloader = $("preloader");
+  const originalText = scanButton ? scanButton.innerHTML : "";
+  activeScanController = new AbortController();
   try {
     if (scanButton) {
       scanButton.disabled = true;
-
-      scanButton.innerHTML =
-        `
-                <i class="fas fa-spinner fa-spin"></i>
-                SCANNING...
-                `;
+      scanButton.innerHTML = '<span class="btn-text"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> SCANNING...</span>';
     }
-
-    showToast(
-      "Scanning target...",
-      "info"
-    );
-
-    const result =
-      await analyzeTarget(target);
-
+    if (cancelButton) cancelButton.hidden = false;
+    if (preloader) preloader.classList.remove("hidden");
+    setText("status", "SCANNING");
+    showToast("Scanning target…", "info");
+    const result = await analyzeTarget(target, activeScanController.signal);
     lastResult = result;
-
+    saveScanHistory(result);
     displayResults(result);
-
-    showToast(
-      "Scan completed successfully.",
-      "success"
-    );
-
+    setText("status", "COMPLETE");
+    showToast("Scan completed successfully.", "success");
   } catch (error) {
-    console.error(error);
-
-    showToast(
-      error.message ||
-      "Scan failed.",
-      "error"
-    );
-
+    const cancelled = error && error.name === "AbortError";
+    setText("status", cancelled ? "CANCELLED" : "ERROR");
+    showToast(cancelled ? "Scan cancelled." : (error.message || "Scan failed."), cancelled ? "info" : "error");
   } finally {
-    if (scanButton) {
-      scanButton.disabled = false;
-
-      scanButton.innerHTML =
-        originalText;
-    }
+    activeScanController = null;
+    if (scanButton) { scanButton.disabled = false; scanButton.innerHTML = originalText; }
+    if (cancelButton) cancelButton.hidden = true;
+    if (preloader) preloader.classList.add("hidden");
   }
 }
 
@@ -257,6 +207,8 @@ function displayResults(result) {
 
   showResultsSection();
 
+  displayExecutiveSummary(result);
+  renderScanHistory();
   displayScore(result);
 
   displaySecurityHeaders(
@@ -323,6 +275,141 @@ function displayResults(result) {
 
 
 /* =========================================================
+   EXECUTIVE SUMMARY / LOCAL HISTORY / REGRESSION
+   ========================================================= */
+
+function hostForResult(result) {
+  try { return new URL(result.url).hostname.toLowerCase(); } catch { return String(result.url || "unknown"); }
+}
+
+function severityCounts(issues) {
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  (Array.isArray(issues) ? issues : []).forEach(issue => {
+    const severity = String(issue.severity || "low").toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(counts, severity)) counts[severity]++;
+  });
+  return counts;
+}
+
+function findingKey(issue) {
+  return [issue.header, issue.severity, issue.explanation].map(value => String(value || "").trim().toLowerCase()).join("|");
+}
+
+function compareFindingSets(current, previous) {
+  const currentIssues = Array.isArray(current?.issues) ? current.issues : [];
+  const previousIssues = Array.isArray(previous?.issues) ? previous.issues : [];
+  const currentKeys = new Set(currentIssues.map(findingKey));
+  const previousKeys = new Set(previousIssues.map(findingKey));
+  return {
+    added: currentIssues.filter(issue => !previousKeys.has(findingKey(issue))),
+    resolved: previousIssues.filter(issue => !currentKeys.has(findingKey(issue))),
+    unchanged: currentIssues.filter(issue => previousKeys.has(findingKey(issue)))
+  };
+}
+
+function displayExecutiveSummary(result) {
+  if (!result) return;
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  const counts = severityCounts(issues);
+  const headers = Array.isArray(result.security_headers) ? result.security_headers : [];
+  const passCount = headers.filter(item => String(item.status).toLowerCase() === "pass").length;
+  const failCount = headers.filter(item => String(item.status).toLowerCase() === "fail").length;
+  const protocol = (() => { try { return new URL(result.url).protocol; } catch { return ""; } })();
+  const tls = result.tls || {};
+  const tlsText = protocol !== "https:" ? "N/A" : (!tls.evaluated ? "Unknown" : (tls.valid && ["TLS 1.2", "TLS 1.3"].includes(tls.version) ? "Verified" : "Review"));
+  setText("summaryTarget", result.url || "Unknown target");
+  setText("summaryScore", Number(result.score) < 0 ? "N/A" : Number(result.score || 0));
+  setText("summaryRating", result.rating || getRating(Number(result.score)));
+  setText("countCritical", counts.critical);
+  setText("countHigh", counts.high);
+  setText("countMedium", counts.medium);
+  setText("countLow", counts.low);
+  setText("countHeadersPass", passCount);
+  setText("countHeadersFail", failCount);
+  setText("summaryHTTPStatus", result.http_status || "—");
+  setText("summaryTLSStatus", tlsText);
+  setText("summaryDuration", Number.isFinite(Number(result.duration_ms)) ? `${Math.max(0, Number(result.duration_ms))} ms` : "—");
+  const stamp = result.timestamp ? new Date(result.timestamp) : null;
+  setText("summaryTimestamp", stamp && !Number.isNaN(stamp.getTime()) ? stamp.toLocaleString() : "—");
+  const history = getScanHistory();
+  const previous = history.find(item => item.id !== currentHistoryID && item.hostname === hostForResult(result));
+  const regression = $("regressionSummary");
+  if (regression) {
+    if (!previous) {
+      regression.textContent = "No earlier scan for this host is saved in this browser. This scan becomes the comparison baseline.";
+    } else {
+      const diff = compareFindingSets(result, previous.result);
+      regression.textContent = `Compared with ${new Date(previous.timestamp).toLocaleString()}: ${diff.added.length} new, ${diff.resolved.length} resolved, ${diff.unchanged.length} unchanged findings.`;
+      regression.dataset.baselineId = previous.id;
+    }
+  }
+}
+
+function getScanHistory() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SCAN_HISTORY_KEY) || "[]");
+    return Array.isArray(value) ? value.filter(item => item && item.id && item.result && item.hostname) : [];
+  } catch { return []; }
+}
+
+function saveScanHistory(result) {
+  try {
+    const history = getScanHistory();
+    const timestamp = result.timestamp || new Date().toISOString();
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp, url: result.url || "", hostname: hostForResult(result),
+      score: Number.isFinite(Number(result.score)) ? Number(result.score) : -1,
+      rating: result.rating || "N/A", result
+    };
+    currentHistoryID = entry.id;
+    history.unshift(entry);
+    localStorage.setItem(SCAN_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_LOCAL_HISTORY)));
+    renderScanHistory();
+  } catch {
+    currentHistoryID = null;
+    showToast("This browser could not save scan history. Export the report to keep a copy.", "error");
+  }
+}
+
+function renderScanHistory() {
+  const container = $("scanHistoryList");
+  if (!container) return;
+  const history = getScanHistory();
+  if (!history.length) {
+    container.innerHTML = '<p class="text-muted">No saved scans yet. Run a scan to start local history.</p>';
+    return;
+  }
+  container.innerHTML = history.slice(0, 10).map(item => {
+    const stamp = new Date(item.timestamp);
+    const when = Number.isNaN(stamp.getTime()) ? "Unknown date" : stamp.toLocaleString();
+    const score = item.score < 0 ? "N/A" : `${item.score}/100`;
+    return `<button type="button" class="history-entry" data-scan-id="${escapeHtml(item.id)}">
+      <span><strong>${escapeHtml(item.hostname)}</strong><small>${escapeHtml(when)}</small></span>
+      <span class="history-score">${escapeHtml(score)} · ${escapeHtml(item.rating)}</span>
+      <span class="history-compare">Compare</span>
+    </button>`;
+  }).join("");
+}
+
+function compareWithHistory(scanID) {
+  const selected = getScanHistory().find(item => item.id === scanID);
+  if (!selected || !lastResult) { showToast("Select a saved scan after completing a scan.", "error"); return; }
+  if (selected.hostname !== hostForResult(lastResult)) { showToast("Compare only scans for the same hostname.", "error"); return; }
+  const diff = compareFindingSets(lastResult, selected.result);
+  setText("regressionSummary", `Compared with ${new Date(selected.timestamp).toLocaleString()}: ${diff.added.length} new, ${diff.resolved.length} resolved, ${diff.unchanged.length} unchanged findings.`);
+  showToast("Regression comparison updated.", "success");
+}
+
+function setSeverityFilter(severity) {
+  const selector = $("issueSeverityFilter");
+  if (selector) selector.value = severity || "all";
+  displayIssues(lastResult?.issues || []);
+  $("issuesCard")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+}
+
+
+/* =========================================================
    RESULTS SECTION
    ========================================================= */
 
@@ -351,6 +438,7 @@ function showResultsSection() {
 
 function getRating(score) {
   score = Number(score);
+  if (!Number.isFinite(score) || score < 0) return "N/A";
 
   if (score >= 97) return "A+";
   if (score >= 93) return "A";
@@ -1172,93 +1260,36 @@ function displayRedirects(redirects) {
    ========================================================= */
 
 function displayIssues(issues) {
-  const container =
-    $("issuesList") ||
-    $("findingsList") ||
-    $("recommendationsList");
-
-  if (!container) {
+  const container = $("issuesList") || $("findingsList") || $("recommendationsList");
+  const card = $("issuesCard");
+  if (!container) return;
+  if (card) showElement(card);
+  const severityFilter = ($("issueSeverityFilter")?.value || "all").toLowerCase();
+  const query = ($("issueSearch")?.value || "").trim().toLowerCase();
+  const sort = $("issueSort")?.value || "severity";
+  const severityRank = { critical: 4, high: 3, medium: 2, low: 1 };
+  const filtered = (Array.isArray(issues) ? issues : []).filter(issue => {
+    const severity = String(issue.severity || "low").toLowerCase();
+    if (severityFilter !== "all" && severity !== severityFilter) return false;
+    const searchable = [issue.header, issue.explanation, issue.remediation, issue.severity].join(" ").toLowerCase();
+    return !query || searchable.includes(query);
+  });
+  filtered.sort((a, b) => sort === "name"
+    ? String(a.header || "").localeCompare(String(b.header || ""))
+    : (severityRank[String(b.severity || "low").toLowerCase()] || 0) - (severityRank[String(a.severity || "low").toLowerCase()] || 0));
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-shield-check" aria-hidden="true"></i><span>No findings match the current filters.</span></div>';
     return;
   }
-
-  if (!issues.length) {
-    container.innerHTML = `
-            <div class="empty-state">
-
-                <i class="fas fa-shield-check"></i>
-
-                <span>
-                    No security issues detected.
-                </span>
-
-            </div>
-        `;
-
-    return;
-  }
-
-  container.innerHTML =
-    issues.map(issue => {
-
-      const severity =
-        String(
-          issue.severity ||
-          "Low"
-        ).toLowerCase();
-
-      return `
-                <div class="issue-card severity-${severity}">
-
-                    <div class="issue-header">
-
-                        <strong>
-                            ${escapeHtml(
-        issue.header
-      )}
-                        </strong>
-
-                        <span class="severity-badge">
-                            ${escapeHtml(
-        issue.severity ||
-        "Low"
-      )}
-                        </span>
-
-                    </div>
-
-
-                    ${issue.explanation
-          ? `
-                                <p>
-                                    ${escapeHtml(
-            issue.explanation
-          )}
-                                </p>
-                              `
-          : ""
-        }
-
-
-                    ${issue.remediation
-          ? `
-                                <div class="remediation">
-
-                                    <strong>
-                                        Recommendation:
-                                    </strong>
-
-                                    ${escapeHtml(
-            issue.remediation
-          )}
-
-                                </div>
-                              `
-          : ""
-        }
-
-                </div>
-            `;
-    }).join("");
+  container.innerHTML = filtered.map((issue, index) => {
+    const severity = String(issue.severity || "Low").toLowerCase();
+    return `<details class="issue-card severity-${escapeHtml(severity)}" ${index === 0 ? "open" : ""}>
+      <summary class="issue-header"><strong>${escapeHtml(issue.header || "Security finding")}</strong><span class="severity-badge">${escapeHtml(issue.severity || "Low")}</span></summary>
+      ${issue.status ? `<p class="finding-status">Status: ${escapeHtml(issue.status)}</p>` : ""}
+      ${issue.explanation ? `<p>${escapeHtml(issue.explanation)}</p>` : ""}
+      ${issue.remediation ? `<div class="remediation"><strong>Recommendation:</strong> ${escapeHtml(issue.remediation)}</div>` : ""}
+    </details>`;
+  }).join("");
 }
 
 
@@ -1317,6 +1348,7 @@ function parseCSP(value) {
 
 function displayCSP(headers) {
   const container =
+    $("cspDirectives") ||
     $("cspVisualizer") ||
     $("cspDetails");
 
@@ -1638,179 +1670,135 @@ function downloadJSON() {
    ========================================================= */
 
 function initEventListeners() {
-
-  const scanButtons = [
-    $("scanBtn"),
-    $("analyzeBtn"),
-    $("scanButton")
-  ].filter(Boolean);
-
-  scanButtons.forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        runScan
-      );
-
-    }
-  );
-
-
-  const input =
-    $("urlInput") ||
-    $("url") ||
-    $("targetUrl");
-
-  if (input) {
-
-    input.addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key ===
-          "Enter"
-        ) {
-          event.preventDefault();
-
-          runScan();
-        }
-
-      }
-    );
-
-  }
-
-
-  const copyButtons = [
-    $("copyBtn"),
-    $("copyJsonBtn"),
-    $("copyJSON")
-  ].filter(Boolean);
-
-  copyButtons.forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        copyJSON
-      );
-
-    }
-  );
-
-
-  const exportButtons = [
-    $("exportJsonBtn"),
-    $("exportJSON"),
-    $("downloadJsonBtn"),
-    $("downloadJSON")
-  ].filter(Boolean);
-
-  exportButtons.forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        exportJSON
-      );
-
-    }
-  );
+  const form = $("analyzeForm");
+  if (form) form.addEventListener("submit", event => { event.preventDefault(); runScan(); });
+  const cancelButton = $("cancelScanBtn");
+  if (cancelButton) cancelButton.addEventListener("click", () => activeScanController?.abort());
+  const themeButton = $("themeToggle");
+  if (themeButton) themeButton.addEventListener("click", toggleTheme);
+  const clearHistoryButton = $("clearHistoryBtn");
+  if (clearHistoryButton) clearHistoryButton.addEventListener("click", () => {
+    try { localStorage.removeItem(SCAN_HISTORY_KEY); } catch {}
+    currentHistoryID = null;
+    renderScanHistory();
+    setText("regressionSummary", "Local scan history cleared.");
+  });
+  const severityFilter = $("issueSeverityFilter");
+  if (severityFilter) severityFilter.addEventListener("change", () => displayIssues(lastResult?.issues || []));
+  const issueSort = $("issueSort");
+  if (issueSort) issueSort.addEventListener("change", () => displayIssues(lastResult?.issues || []));
+  const issueSearch = $("issueSearch");
+  if (issueSearch) issueSearch.addEventListener("input", () => displayIssues(lastResult?.issues || []));
+  document.querySelectorAll("[data-severity-filter]").forEach(button => button.addEventListener("click", () => setSeverityFilter(button.dataset.severityFilter || "all")));
+  const headerFilter = $("headerFilter");
+  if (headerFilter) headerFilter.addEventListener("input", () => {
+    const query = headerFilter.value.trim().toLowerCase();
+    const rows = $("headersBody")?.querySelectorAll("tr") || [];
+    rows.forEach(row => { row.hidden = !row.textContent.toLowerCase().includes(query); });
+  });
+  const batchButton = $("batchScanBtn");
+  if (batchButton) batchButton.addEventListener("click", runBatchScan);
+  const historyList = $("scanHistoryList");
+  if (historyList) historyList.addEventListener("click", event => {
+    const button = event.target.closest("[data-scan-id]");
+    if (button) compareWithHistory(button.dataset.scanId);
+  });
 }
 
-async function generatePDFReport() {
-  if (!lastResult || !lastResult.url) {
-    showToast(
-      "Run a scan first.",
-      "error"
-    );
+function initThemeToggle() {
+  const root = document.documentElement;
+  let preferred = "dark";
+  try { preferred = localStorage.getItem("hha.theme") || "dark"; } catch {}
+  root.dataset.theme = preferred === "light" ? "light" : "dark";
+  updateThemeButton();
+}
+function toggleTheme() {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
+  try { localStorage.setItem("hha.theme", root.dataset.theme); } catch {}
+  updateThemeButton();
+}
+function updateThemeButton() {
+  const button = $("themeToggle");
+  if (!button) return;
+  const light = document.documentElement.dataset.theme === "light";
+  button.setAttribute("aria-pressed", String(light));
+  button.setAttribute("aria-label", light ? "Switch to dark theme" : "Switch to light theme");
+  button.title = light ? "Switch to dark theme" : "Switch to light theme";
+}
 
+
+async function runBatchScan() {
+  const input = $("batchUrls");
+  const output = $("batchResults");
+  const button = $("batchScanBtn");
+  const urls = (input?.value || "").split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+  if (!urls.length || urls.length > 10) {
+    showToast("Enter between 1 and 10 URLs for a batch scan.", "error");
+    input?.focus();
     return;
   }
-
+  if (button) { button.disabled = true; button.textContent = "SCANNING BATCH…"; }
+  if (output) output.textContent = "Batch scan running with bounded concurrency…";
   try {
-    const response = await fetch(
-      "/api/report",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          url: lastResult.url
-        })
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        "Failed to generate report."
-      );
-    }
-
-    const html =
-      await response.text();
-
-    const reportWindow =
-      window.open(
-        "",
-        "_blank"
-      );
-
-    if (!reportWindow) {
-      throw new Error(
-        "Popup blocked. Allow popups for this site."
-      );
-    }
-
-    reportWindow.document.open();
-
-    reportWindow.document.write(
-      html
-    );
-
-    reportWindow.document.close();
-
-    reportWindow.onload = () => {
-      setTimeout(() => {
-        reportWindow.print();
-      }, 500);
-    };
-
+    const response = await fetch("/api/analyze/batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urls }) });
+    let data;
+    try { data = await response.json(); } catch { throw new Error("Server returned invalid JSON."); }
+    if (!response.ok) throw new Error(data?.error || `Batch request failed (${response.status})`);
+    const results = Array.isArray(data.results) ? data.results : [];
+    if (output) output.innerHTML = results.map((item, index) => {
+      if (!item.result) return `<div class="batch-result batch-error"><span>${escapeHtml(item.url || urls[index])}</span><strong>${escapeHtml(item.error || "Scan failed")}</strong></div>`;
+      const score = Number(item.result.score) < 0 ? "N/A" : `${item.result.score}/100`;
+      return `<div class="batch-result"><span>${escapeHtml(item.url)}</span><strong>${escapeHtml(score)} · ${escapeHtml(item.result.rating || "N/A")}</strong><button type="button" data-batch-index="${index}">Open report</button></div>`;
+    }).join("");
+    results.forEach(item => { if (item.result) saveScanHistory(item.result); });
+    if (output) output.querySelectorAll("[data-batch-index]").forEach(openButton => openButton.addEventListener("click", () => {
+      const selected = results[Number(openButton.dataset.batchIndex)]?.result;
+      if (selected) { lastResult = selected; displayResults(selected); document.getElementById("resultsSection")?.scrollIntoView({behavior:"smooth"}); }
+    }));
+    showToast(`Batch complete: ${results.filter(item => item.result).length}/${results.length} successful.`, "success");
+    renderScanHistory();
   } catch (error) {
-    console.error(error);
-
-    showToast(
-      error.message,
-      "error"
-    );
+    if (output) output.textContent = error.message || "Batch scan failed.";
+    showToast(error.message || "Batch scan failed.", "error");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "SCAN_BATCH"; }
   }
 }
 
 
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
+async function generatePDFReport() {
+  if (!lastResult) { showToast("Run a scan first.", "error"); return; }
+  const result = lastResult;
+  const headers = Array.isArray(result.security_headers) ? result.security_headers : [];
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  const safeTarget = escapeHtml(result.url || "Unknown target");
+  const headerRows = headers.map(item => `<tr><td>${escapeHtml(item.name)}</td><td><code>${escapeHtml(item.value)}</code></td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.message)}</td></tr>`).join("");
+  const issueRows = issues.map(item => `<tr><td>${escapeHtml(item.severity)}</td><td>${escapeHtml(item.header)}</td><td>${escapeHtml(item.explanation)}</td><td>${escapeHtml(item.remediation)}</td></tr>`).join("");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Security Assessment Report</title><style>
+    @page{size:A4;margin:16mm}body{font-family:Arial,sans-serif;color:#172026;line-height:1.45;font-size:11px}h1,h2{margin-bottom:6px}h1{font-size:22px}h2{font-size:15px;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-top:24px}.meta{color:#475569;overflow-wrap:anywhere}.score{font-size:28px;font-weight:700}table{width:100%;border-collapse:collapse;table-layout:fixed;overflow-wrap:anywhere}th,td{border:1px solid #d1d5db;padding:6px;text-align:left;vertical-align:top}th{background:#f1f5f9}code{white-space:pre-wrap;overflow-wrap:anywhere}.footer{margin-top:30px;color:#64748b;border-top:1px solid #cbd5e1;padding-top:8px}</style></head><body>
+    <h1>HTTP Header Analyzer</h1><p class="meta">Target: ${safeTarget}<br>Scanned: ${escapeHtml(result.timestamp || "Unknown")}<br>HTTP status: ${escapeHtml(result.http_status ?? "Unknown")}</p>
+    <p class="score">Score: ${escapeHtml(Number(result.score)<0 ? "N/A" : result.score + "/100")} · ${escapeHtml(result.rating || "N/A")}</p>
+    <h2>Findings (${issues.length})</h2><table><thead><tr><th>Severity</th><th>Finding</th><th>Evidence / explanation</th><th>Remediation</th></tr></thead><tbody>${issueRows || "<tr><td colspan='4'>No findings recorded.</td></tr>"}</tbody></table>
+    <h2>Security headers (${headers.length})</h2><table><thead><tr><th>Header</th><th>Value</th><th>Status</th><th>Details</th></tr></thead><tbody>${headerRows || "<tr><td colspan='4'>No header data.</td></tr>"}</tbody></table>
+    <h2>TLS configuration</h2><p>Evaluated: ${escapeHtml(result.tls?.evaluated ? "Yes" : "No / not applicable")}<br>Version: ${escapeHtml(result.tls?.version || "Unknown")}<br>Cipher: ${escapeHtml(result.tls?.cipher_suite || "Unknown")}<br>Certificate valid: ${escapeHtml(result.tls?.valid === true ? "Yes" : result.tls?.evaluated ? "No / review" : "Unknown")}</p>
+    <div class="footer">Generated by HTTP Header Analyzer. A score reflects observed configuration, not a guarantee that the target is secure.</div><script>window.addEventListener("load",()=>window.print())</script></body></html>`;
+  const reportWindow = window.open("", "_blank");
+  if (!reportWindow) { showToast("Popup blocked. Allow popups to print or save this report.", "error"); return; }
+  reportWindow.document.open();
+  reportWindow.document.write(html);
+  reportWindow.document.close();
+}
 
-    const pdfBtn =
-      document.getElementById(
-        "pdfBtn"
-      );
 
-    if (pdfBtn) {
-      pdfBtn.addEventListener(
-        "click",
-        generatePDFReport
-      );
-    }
+document.addEventListener("DOMContentLoaded", () => {
+  initEventListeners();
+  initThemeToggle();
+  renderScanHistory();
+  const pdfBtn = $("pdfBtn");
+  if (pdfBtn) pdfBtn.addEventListener("click", generatePDFReport);
+});
 
-  }
-);
 
 function displayHSTS(hsts) {
   const container =
