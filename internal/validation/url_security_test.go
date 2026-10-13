@@ -21,6 +21,7 @@ func TestValidateURLRejectsNonDefaultPortsAndReservedNetworks(t *testing.T) {
 		{name:"hexadecimal IPv4 shorthand", target:"http://0x7f000001", wantErr:true},
 		{name:"octal IPv4 shorthand", target:"http://0177.0.0.1", wantErr:true},
 		{name:"public target", target:"https://example.com", wantErr:false},
+		{name:"canonical public IPv4", target:"http://8.8.8.8", wantErr:false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
