@@ -1,16 +1,59 @@
-# 🔒 HTTP Header Analyzer
+<div align="center">
 
+# 🔐 HTTP Header Analyzer
+
+### V1 Stable Release · `v1.0.0`
+
+**Analyze. Understand. Secure.**
+
+A security-focused HTTP header, TLS, cookie, redirect, and configuration analyzer built with Go. Turn externally observable website security signals into clear findings, meaningful risk scores, and practical remediation guidance.
+
+[![Release](https://img.shields.io/badge/release-v1.0.0-7c3aed?style=for-the-badge)](CHANGELOG.md)
 [![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8?style=for-the-badge&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen?style=for-the-badge)](https://github.com/ItsWanheda/http-header-analyzer)
+[![Go CI](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/go-ci.yml/badge.svg?branch=main)](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/go-ci.yml)
+[![Browser E2E](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/browser-e2e.yml/badge.svg?branch=main)](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/browser-e2e.yml)
+[![CodeQL](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ItsWanheda/http-header-analyzer/actions/workflows/codeql.yml)
 
-> A security-focused HTTP header, TLS, cookie, redirect, and configuration analyzer built with Go.
+</div>
 
-HTTP Header Analyzer inspects the externally observable security posture of a website and turns its findings into an actionable report. It combines HTTP security-header checks, cookie analysis, TLS inspection, redirect tracking, SSRF-aware URL validation, and a cyberpunk-inspired web interface.
+> **V1 release:** `v1.0.0` is the project's first stable V1 release. It brings together hardened target validation, richer security analysis, a responsive dashboard, browser-local history, reporting exports, a bounded batch API, and automated verification.
+>
+> **Responsible use:** Scan only systems you own or have explicit permission to test.
 
-Built for developers, security researchers, penetration testers, system administrators, and security enthusiasts.
+---
 
-> **Responsible use:** Only scan systems that you own or have explicit permission to test.
+## 🧭 Contents
+
+- [Features](#-features)
+- [Screenshots](#-screenshots)
+- [How It Works](#-how-it-works)
+- [Security Rating](#-security-rating)
+- [Quick Start](#-quick-start)
+- [CLI Reference](#-cli-reference)
+- [REST API](#-rest-api)
+- [Security Model](#-security-considerations)
+- [Browser-Local History](#-browser-local-scan-history)
+- [Project Structure](#-project-structure)
+- [Development and Tests](#-development)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [Security Policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+- [License](#-license)
+
+---
+
+## 🚀 What's Included in V1
+
+| Capability | V1 release |
+| --- | --- |
+| Security analysis | HTTP security headers, CSP/HSTS policy checks, cookies, TLS certificates, CORS, redirects, `security.txt`, and information-disclosure signals |
+| Safe scanning | SSRF-aware validation, DNS destination checks, validated redirect hops, default-port restrictions, and non-mutating `OPTIONS` method discovery |
+| Findings and scoring | Evidence-backed findings, severity, practical remediation, and score handling for not-applicable or unknown checks |
+| Dashboard | Responsive dark/light interface, executive summary, filtering, sorting, expandable findings, progress feedback, and cancellation |
+| Reports and history | JSON and CSV exports, print/save as PDF, browser-local scan history, and finding comparisons |
+| API and automation | Single and batch analysis, bounded concurrency, request limits, rate limiting, health check, CLI quality gates, and CI workflows |
 
 ---
 
@@ -39,7 +82,7 @@ Built for developers, security researchers, penetration testers, system administ
 
 ---
 
-## 🧭 How it works
+## 🧭 How It Works
 
 ```text
 Target URL
@@ -60,7 +103,7 @@ Calculate score and generate remediation guidance
 Display results in the dashboard or return JSON
 ```
 
-## 📊 Security rating
+## 📊 Security Rating
 
 The analyzer reports a score between 0 and 100 and maps it to the following rating bands when applicable. Checks marked not applicable or unknown do not earn points or reduce the denominator. If no checks can be scored, the result is `N/A`, not an artificial zero or a passing grade.
 
@@ -150,6 +193,18 @@ Use quality gates in CI/CD:
 
 The CLI exits with a non-zero status when a scan cannot be completed, making it suitable for scripts and CI pipelines. By default, web scans use safe discovery only: HTTP method analysis issues OPTIONS and reads the Allow header rather than sending state-changing methods.
 
+### 🔎 Verify the CLI version
+
+The V1 CLI reports the application release version locally; no target is contacted.
+
+```bash
+./http-header-analyzer version
+# 1.0.0
+
+# Equivalent flag:
+./http-header-analyzer --version
+```
+
 ### Build a production binary
 
 ```bash
@@ -236,7 +291,7 @@ GET /api/health
 
 ---
 
-## 🛡️ Security considerations
+## 🛡️ Security Considerations
 
 Because the application makes outbound requests to user-supplied URLs, URL validation is a core security boundary. The validation layer:
 
@@ -279,11 +334,11 @@ http-header-analyzer/
 └── README.md
 ```
 
-### Browser-local scan history
+### Browser-Local Scan History
 
 The dashboard keeps the most recent 20 structured scan results in the current browser's `localStorage`. It shows new, resolved, and unchanged findings when another scan of the same hostname is run. This is intentionally client-local and privacy-preserving; it is not a shared server-side history and clearing browser storage removes it. Export JSON/CSV or print the report to retain a durable copy.
 
-## 🧪 Development
+## 🧪 Development and Tests
 
 Format the Go code:
 
@@ -362,16 +417,3 @@ If you find the project useful, consider giving it a ⭐ and sharing feedback th
 Made with ❤️ and Go by [ItsWanheda](https://github.com/ItsWanheda)
 
 </div>
-
-
-## 🔎 CLI Version
-
-The CLI exposes its current release version without contacting a target:
-
-```bash
-./http-header-analyzer version
-# or
-./http-header-analyzer --version
-```
-
-This is useful for verifying the binary installed in a local environment or CI job before running a scan.
