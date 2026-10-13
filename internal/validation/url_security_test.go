@@ -16,6 +16,10 @@ func TestValidateURLRejectsNonDefaultPortsAndReservedNetworks(t *testing.T) {
 		{name:"benchmark ipv4", target:"https://198.18.0.1", wantErr:true},
 		{name:"documentation ipv6", target:"https://[2001:db8::1]", wantErr:true},
 		{name:"reserved hostname", target:"https://service.internal", wantErr:true},
+		{name:"decimal IPv4 shorthand", target:"http://2130706433", wantErr:true},
+		{name:"abbreviated IPv4 shorthand", target:"http://127.1", wantErr:true},
+		{name:"hexadecimal IPv4 shorthand", target:"http://0x7f000001", wantErr:true},
+		{name:"octal IPv4 shorthand", target:"http://0177.0.0.1", wantErr:true},
 		{name:"public target", target:"https://example.com", wantErr:false},
 	}
 	for _, tt := range tests {
