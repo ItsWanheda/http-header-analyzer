@@ -521,7 +521,9 @@ func (a *Analyzer) analyzeHTTPMethods(ctx context.Context, targetURL string) mod
 		return result
 	}
 	req.Header.Set("User-Agent", userAgent)
-	resp, err := a.client.Do(req)
+	probeClient := *a.client
+	probeClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	resp, err := probeClient.Do(req)
 	if err != nil {
 		result.Message = "OPTIONS probe failed; method support is unknown"
 		return result
@@ -670,7 +672,9 @@ func (a *Analyzer) analyzeCORSWithContext(ctx context.Context, targetURL string,
 	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
 	req.Header.Set("Access-Control-Request-Headers", "authorization,content-type")
 	req.Header.Set("User-Agent", userAgent)
-	resp, err := a.client.Do(req)
+	probeClient := *a.client
+	probeClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	resp, err := probeClient.Do(req)
 	if err != nil {
 		return result
 	}
