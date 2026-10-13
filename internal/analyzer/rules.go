@@ -25,9 +25,10 @@ var RuleRegistry = []models.SecurityRule{
 		Explanation: "CSP reduces the impact of XSS and content injection attacks.",
 		Remediation: "Implement a restrictive Content-Security-Policy appropriate for the application.",
 		CheckLogic: func(v string) (bool, string) {
-			lower := strings.ToLower(v)
-			if !strings.Contains(lower, "default-src") { return false, "Missing default-src directive" }
-			if strings.Contains(lower, "'unsafe-inline'") { return false, "Contains unsafe-inline" }
+			assessment := analyzeCSP(v)
+			if assessment.Status == "fail" || assessment.Status == "warn" {
+				return false, strings.Join(assessment.Warnings, "; ")
+			}
 			return true, ""
 		},
 	},
