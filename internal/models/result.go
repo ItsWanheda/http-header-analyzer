@@ -74,8 +74,10 @@ type Issue struct {
 }
 
 type AnalysisResult struct {
-	URL       string    `json:"url"`
-	Timestamp time.Time `json:"timestamp"`
+	URL        string    `json:"url"`
+	Timestamp  time.Time `json:"timestamp"`
+	HTTPStatus int       `json:"http_status"`
+	DurationMS int64     `json:"duration_ms"`
 
 	SecurityHeaders []SecurityHeader `json:"security_headers"`
 	TLS             TLSInfo          `json:"tls"`
