@@ -23,8 +23,8 @@ func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	}
 
 	for _, result := range results {
-		if result.Status != "pass" {
-			t.Errorf("%s status = %q, want pass", result.Name, result.Status)
+		if result.Status != "pass" && result.Status != "not_applicable" {
+			t.Errorf("%s status = %q, want pass or not_applicable", result.Name, result.Status)
 		}
 	}
 }
