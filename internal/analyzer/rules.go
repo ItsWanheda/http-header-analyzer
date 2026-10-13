@@ -14,9 +14,9 @@ var RuleRegistry = []models.SecurityRule{
 		Explanation: "HSTS ensures browsers only connect via HTTPS.",
 		Remediation: "Add Strict-Transport-Security with a long max-age and includeSubDomains.",
 		CheckLogic: func(v string) (bool, string) {
-			header := make(http.Header)
-			header.Set("Strict-Transport-Security", v)
-			assessment := analyzeHSTS(header)
+			headers := make(http.Header)
+			headers.Set("Strict-Transport-Security", v)
+			assessment := analyzeHSTS(headers)
 			return assessment.Status == "pass", assessment.Message
 		},
 	},
