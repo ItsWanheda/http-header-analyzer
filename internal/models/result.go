@@ -34,6 +34,7 @@ type TLSInfo struct {
 type CertificateInfo struct {
 	Present        bool     `json:"present"`
 	Valid          bool     `json:"valid"`
+	ChainVerified  bool     `json:"chain_verified"`
 	Subject        string   `json:"subject"`
 	Issuer         string   `json:"issuer"`
 	SerialNumber   string   `json:"serial_number"`
