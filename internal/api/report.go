@@ -6,7 +6,7 @@ import (
     "net/http"
     "strings"
 
-    "github.com/zharfatech/http-header-analyzer/internal/validation"
+    "github.com/ItsWanheda/http-header-analyzer/internal/validation"
 )
 
 const reportTemplate = `
@@ -549,7 +549,7 @@ func (h *Handler) HandleReport(
 		URL string `json:"url"`
 	}
 
-	if err := readJSON(r, &request); err != nil {
+	if err := decodeJSON(w, r, &request); err != nil {
 		http.Error(
 			w,
 			"Invalid request body",
