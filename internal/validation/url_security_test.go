@@ -1,6 +1,9 @@
 package validation
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
 
 func TestValidateURLRejectsNonDefaultPortsAndReservedNetworks(t *testing.T) {
 	tests := []struct{name, target string; wantErr bool}{
