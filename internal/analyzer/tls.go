@@ -7,7 +7,7 @@ import (
     "strings"
     "time"
 
-    "github.com/zharfatech/http-header-analyzer/internal/models"
+    "github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
 // analyzeTLS extracts TLS information from the HTTP response
