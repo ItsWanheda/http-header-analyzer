@@ -51,6 +51,9 @@ func IsPublicIP(ip net.IP) bool {
 // isNonCanonicalIPLiteral rejects numeric host forms that some resolvers
 // interpret as legacy IPv4 shorthand (decimal, octal, or hexadecimal).
 func isNonCanonicalIPLiteral(host string) bool {
+	if net.ParseIP(host) != nil {
+		return false
+	}
 	parts := strings.Split(host, ".")
 	if len(parts) == 0 || len(parts) > 4 {
 		return false
