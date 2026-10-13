@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zharfatech/http-header-analyzer/internal/analyzer"
-	"github.com/zharfatech/http-header-analyzer/internal/api"
+	"github.com/ItsWanheda/http-header-analyzer/internal/analyzer"
+	"github.com/ItsWanheda/http-header-analyzer/internal/api"
 )
 
 func main() {
@@ -22,7 +22,9 @@ func main() {
 	router.Use(securityHeaders)
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
+	apiRouter.Use(api.RateLimitMiddleware)
 	apiRouter.HandleFunc("/analyze", handler.HandleAnalyze).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/analyze/batch", handler.HandleBatch).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/report", handler.HandleReport).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/health", handler.HandleHealth).Methods(http.MethodGet)
 
@@ -63,6 +65,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self'")
+		w.Header().Set("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})
 }
