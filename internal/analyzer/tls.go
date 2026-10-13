@@ -14,9 +14,10 @@ import (
 func analyzeTLS(resp *http.Response) models.TLSInfo {
     info := models.TLSInfo{
         Valid: true,
+        Evaluated: resp != nil && resp.TLS != nil,
     }
 
-    if resp.TLS == nil {
+    if resp == nil || resp.TLS == nil {
         info.Valid = false
         info.Version = "N/A (HTTP only)"
         return info
