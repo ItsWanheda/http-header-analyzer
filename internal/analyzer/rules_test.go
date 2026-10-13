@@ -11,6 +11,7 @@ func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	headers.Set("Content-Security-Policy", "default-src 'self'")
 	headers.Set("X-Content-Type-Options", "nosniff")
 	headers.Set("X-Frame-Options", "DENY")
+	headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	headers.Add("Set-Cookie", "session=abc; Secure; HttpOnly; SameSite=Lax")
 
 	results, issues := analyzeSecurityHeadersWithRules(headers)
