@@ -3,6 +3,7 @@ package api
 import (
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -47,7 +48,7 @@ func RateLimitMiddleware(next http.Handler) http.Handler {
 			retry := int(apiRateWindow.Seconds() - now.Sub(bucket.start).Seconds())
 			if retry < 1 { retry = 1 }
 			rateBuckets.Unlock()
-			w.Header().Set("Retry-After", time.Duration(retry).String())
+			w.Header().Set("Retry-After", strconv.Itoa(retry))
 			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "API rate limit exceeded; retry shortly"})
 			return
 		}
