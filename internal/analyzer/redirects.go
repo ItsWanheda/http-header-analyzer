@@ -4,14 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"time"
 
-	"github.com/zharfatech/http-header-analyzer/internal/models"
+	"github.com/ItsWanheda/http-header-analyzer/internal/models"
 )
 
-func (a *Analyzer) analyzeRedirects(targetURL string) []models.RedirectInfo {
+func (a *Analyzer) analyzeRedirects(parent context.Context, targetURL string) []models.RedirectInfo {
 	redirects := make([]models.RedirectInfo, 0, maxRedirects)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*timeSecond)
+	ctx, cancel := context.WithTimeout(parent, 8*time.Second)
 	defer cancel()
 
 	current, err := url.Parse(targetURL)
@@ -59,7 +60,6 @@ func (a *Analyzer) analyzeRedirects(targetURL string) []models.RedirectInfo {
 	return redirects
 }
 
-const timeSecond = 1
 
 func isRedirectStatusCode(code int) bool {
 	return code >= 300 && code < 400
