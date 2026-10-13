@@ -118,6 +118,7 @@ func (a *Analyzer) Analyze(targetURL string) (*models.AnalysisResult, error) {
 }
 
 func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*models.AnalysisResult, error) {
+	startedAt := time.Now()
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
@@ -152,8 +153,9 @@ func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*m
 	}
 
 	result := &models.AnalysisResult{
-		URL:       targetURL,
-		Timestamp: time.Now().UTC(),
+		URL:        targetURL,
+		Timestamp:  time.Now().UTC(),
+		HTTPStatus: resp.StatusCode,
 	}
 
 	result.SecurityHeaders, result.Issues = analyzeSecurityHeadersWithRules(resp.Header)
@@ -172,6 +174,7 @@ func (a *Analyzer) AnalyzeWithContext(ctx context.Context, targetURL string) (*m
 
 	result.Score = calculateScore(result.SecurityHeaders, result.TLS, parsed.Scheme == "https")
 	result.Rating = calculateRating(result.Score)
+	result.DurationMS = time.Since(startedAt).Milliseconds()
 
 	return result, nil
 }
