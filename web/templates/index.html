@@ -7,9 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>
-    Header Analyzer
-  </title>
+  <title>HTTP Header Analyzer | ItsWanheda</title>
 
 
   <link rel="stylesheet" href="../static/style.css" />
@@ -31,7 +29,7 @@
   <!-- MATRIX BACKGROUND -->
   <!-- ================================================== -->
 
-  <canvas id="matrix"></canvas>
+  <canvas id="matrix" aria-hidden="true"></canvas>
 
 
   <!-- ================================================== -->
@@ -51,14 +49,14 @@
   <!-- TOAST -->
   <!-- ================================================== -->
 
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 
   <!-- ================================================== -->
   <!-- PRELOADER -->
   <!-- ================================================== -->
 
-  <div id="preloader" class="preloader hidden">
+  <div id="preloader" class="preloader hidden" role="status" aria-live="polite" aria-label="Scan in progress">
 
     <div class="scanner"></div>
 
@@ -96,11 +94,9 @@
         </span>
 
 
-        <div class="theme-toggle" id="themeToggle">
-
-          <i class="fas fa-sun"></i>
-
-        </div>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light theme" aria-pressed="false" title="Toggle color theme">
+          <i class="fas fa-sun" aria-hidden="true"></i>
+        </button>
 
       </div>
 
@@ -116,9 +112,9 @@
 
       <p class="subtitle">
 
-        SECURITY PROTOCOL v0.7 //
+        SECURITY PROTOCOL v1.0.0 //
 
-        <span id="status">
+        <span id="status" role="status" aria-live="polite">
           STANDBY
         </span>
 
@@ -173,8 +169,15 @@
             </span>
 
           </button>
-
+          <button type="button" id="cancelScanBtn" class="secondary-btn" hidden>Cancel scan</button>
         </form>
+
+        <div class="batch-scan-panel">
+          <label for="batchUrls">BATCH_TARGETS <span class="text-muted">(up to 10 authorized URLs, one per line)</span></label>
+          <textarea id="batchUrls" rows="3" placeholder="https://example.com&#10;https://example.org" spellcheck="false"></textarea>
+          <button type="button" id="batchScanBtn" class="secondary-btn">SCAN_BATCH</button>
+          <div id="batchResults" aria-live="polite" aria-atomic="true"></div>
+        </div>
 
       </section>
 
@@ -204,15 +207,15 @@
 
           <div class="report-actions">
 
-            <button class="copy-btn" id="copyBtn" title="Copy JSON" type="button">
+            <button class="copy-btn" id="copyBtn" title="Copy JSON" aria-label="Copy scan JSON" type="button">
               <i class="fas fa-copy"></i>
             </button>
 
-            <button class="copy-btn" id="exportJsonBtn" title="Export JSON" type="button">
+            <button class="copy-btn" id="exportJsonBtn" title="Export scan JSON" aria-label="Export scan JSON" type="button">
               <i class="fas fa-file-export"></i>
             </button>
 
-            <button class="copy-btn" id="pdfBtn" title="Generate PDF Report" type="button">
+            <button class="copy-btn" id="pdfBtn" title="Print or save report as PDF" aria-label="Print or save report as PDF" type="button">
               <i class="fas fa-file-pdf"></i>
             </button>
 
@@ -221,6 +224,26 @@
         </div>
 
 
+        <section class="executive-summary card full-width" id="executiveSummary" aria-labelledby="executiveSummaryTitle">
+          <div class="summary-heading">
+            <div><h2 id="executiveSummaryTitle">EXECUTIVE_SUMMARY</h2><p id="summaryTarget" class="text-muted">Run a scan to populate the assessment summary.</p></div>
+            <div class="summary-grade" aria-live="polite"><span id="summaryScore">—</span><span>/100</span><strong id="summaryRating">N/A</strong></div>
+          </div>
+          <div class="summary-grid">
+            <button type="button" class="summary-metric severity-critical" data-severity-filter="critical" aria-label="Filter critical findings"><strong id="countCritical">0</strong><span>CRITICAL</span></button>
+            <button type="button" class="summary-metric severity-high" data-severity-filter="high" aria-label="Filter high findings"><strong id="countHigh">0</strong><span>HIGH</span></button>
+            <button type="button" class="summary-metric severity-medium" data-severity-filter="medium" aria-label="Filter medium findings"><strong id="countMedium">0</strong><span>MEDIUM</span></button>
+            <button type="button" class="summary-metric severity-low" data-severity-filter="low" aria-label="Filter low findings"><strong id="countLow">0</strong><span>LOW</span></button>
+            <div class="summary-metric"><strong id="countHeadersPass">0</strong><span>CHECKS PASS</span></div>
+            <div class="summary-metric"><strong id="countHeadersFail">0</strong><span>CHECKS FAIL</span></div>
+          </div>
+          <div class="summary-meta"><span>HTTP <strong id="summaryHTTPStatus">—</strong></span><span>TLS <strong id="summaryTLSStatus">—</strong></span><span>DURATION <strong id="summaryDuration">—</strong></span><span>SCANNED <strong id="summaryTimestamp">—</strong></span></div>
+          <p id="regressionSummary" class="regression-summary" aria-live="polite">Scan history and regression comparison will appear here.</p>
+        </section>
+        <section class="history-panel card full-width" id="scanHistorySection" aria-labelledby="scanHistoryTitle">
+          <div class="history-heading"><div><h2 id="scanHistoryTitle">LOCAL_SCAN_HISTORY</h2><p class="text-muted">Stored only in this browser. History is not uploaded to the server.</p></div><button type="button" id="clearHistoryBtn" class="secondary-btn">Clear history</button></div>
+          <div id="scanHistoryList" class="history-list"><p class="text-muted">No saved scans yet.</p></div>
+        </section>
         <div class="dashboard-grid">
 
 
@@ -310,6 +333,13 @@
             <h3>
               SECURITY_ISSUES
             </h3>
+            <div class="issue-controls">
+              <label for="issueSeverityFilter">Severity</label>
+              <select id="issueSeverityFilter"><option value="all">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+              <label for="issueSort">Sort</label>
+              <select id="issueSort"><option value="severity">Severity</option><option value="name">Finding name</option></select>
+              <label class="sr-only" for="issueSearch">Search findings</label><input type="search" id="issueSearch" placeholder="Search findings…" autocomplete="off" />
+            </div>
 
 
             <div id="issuesList" class="table-container">
@@ -460,7 +490,7 @@
             </h3>
 
 
-            <input type="text" id="headerFilter" placeholder="Filter headers..." style="
+            <input type="search" id="headerFilter" aria-label="Filter response headers" placeholder="Filter headers..." style="
                   margin-bottom: 10px;
                   padding: 5px;
                   width: 100%;
