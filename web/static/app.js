@@ -753,11 +753,9 @@ function displayCertificate(cert) {
   const valid =
     Boolean(cert.valid);
 
-  const matches =
-    Boolean(cert.matches_target);
-
-  const certificateOK =
-    valid && matches;
+  const matches = Boolean(cert.matches_target);
+  const chainVerified = Boolean(cert.chain_verified);
+  const certificateOK = valid && matches && chainVerified;
 
   const days =
     Number(
@@ -855,6 +853,11 @@ function displayCertificate(cert) {
 
             </div>
 
+
+            <div class="tls-detail">
+                <dt>CHAIN VERIFIED</dt>
+                <dd class="${chainVerified ? "status-pass" : "status-fail"}">${chainVerified ? "YES" : "NO / UNKNOWN"}</dd>
+            </div>
 
             <div class="tls-detail">
 
