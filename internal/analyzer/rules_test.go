@@ -8,7 +8,7 @@ import (
 func TestAnalyzeSecurityHeadersWithRules(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-	headers.Set("Content-Security-Policy", "default-src 'self'")
+	headers.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	headers.Set("X-Content-Type-Options", "nosniff")
 	headers.Set("X-Frame-Options", "DENY")
 	headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
