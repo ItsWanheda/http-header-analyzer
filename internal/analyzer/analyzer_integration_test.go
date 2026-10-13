@@ -63,7 +63,7 @@ func TestAnalyzeWithContextWiresAllAssessmentResultsAndUsesSafeMethods(t *testin
 		response := &http.Response{
 			StatusCode: status, Status: http.StatusText(status), Header: headers,
 			Body: io.NopCloser(strings.NewReader(body)), Request: req,
-			TLS: &tls.ConnectionState{Version: tls.VersionTLS13, CipherSuite: tls.TLS_AES_128_GCM_SHA256, PeerCertificates: []*x509.Certificate{cert}},
+			TLS: &tls.ConnectionState{Version: tls.VersionTLS13, CipherSuite: tls.TLS_AES_128_GCM_SHA256, PeerCertificates: []*x509.Certificate{cert}, VerifiedChains: [][]*x509.Certificate{{cert}}},
 		}
 		return response, nil
 	})}
@@ -75,7 +75,7 @@ func TestAnalyzeWithContextWiresAllAssessmentResultsAndUsesSafeMethods(t *testin
 
 	if result.HTTPStatus != http.StatusOK { t.Fatalf("HTTP status = %d, want 200", result.HTTPStatus) }
 	if result.DurationMS < 0 { t.Fatalf("duration should be non-negative, got %d", result.DurationMS) }
-	if !result.Certificate.Present || !result.Certificate.MatchesTarget { t.Fatalf("certificate analysis was not wired: %+v", result.Certificate) }
+	if !result.Certificate.Present || !result.Certificate.MatchesTarget || !result.Certificate.ChainVerified || !result.Certificate.Valid { t.Fatalf("certificate analysis was not wired: %+v", result.Certificate) }
 	if !result.Robots.Found || len(result.Robots.SensitivePaths) != 1 { t.Fatalf("robots analysis was not wired: %+v", result.Robots) }
 	if !result.CSP.Present || result.CSP.Status != "pass" { t.Fatalf("CSP assessment was not wired: %+v", result.CSP) }
 	if result.Score < 80 { t.Fatalf("secure fixture score = %d, want at least 80", result.Score) }
